@@ -4,6 +4,23 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 import dropbox
+from dropbox_integ import DropboxAPI
+
+class ServicesAPI(object):
+    SERVICE_APIS = {
+        "dropbox":DropboxAPI
+    }
+    
+    def __init__(self, request, services):
+        self.request = request
+        self.services = [api(request) for name, api in self.SERVICE_APIS.items() if name in services]
+        
+    def exec_command(self, command, *args, **kwargs):
+        print command,kwargs
+        responses = []
+        for service in self.services:
+            responses.append(service.exec_command(command, *args, **kwargs))
+        return responses
 
 @receiver(post_save, sender=User)
 def create_credentials(sender, **kwargs):
