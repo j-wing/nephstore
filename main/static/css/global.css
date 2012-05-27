@@ -1,0 +1,64 @@
+body {
+    margin:0px;
+    font-family: monospace;
+    font-size: 16px;
+    position:relative;
+    background-color: black;
+    color: lightgray;
+/*     overflow: hidden; */
+
+}
+
+#terminal {
+    width: 100%;
+    height: 100%;
+/*     overflow: scroll; */
+}
+#terminal input {
+    color: inherit;
+    background-color: inherit;
+    border: none;
+}
+
+#terminal input:focus {
+    border:none;
+}
+
+#entry-wrapper {
+    position:fixed;
+    left:-10000px;
+    bottom: 0px;
+}
+
+.line {
+    cursor: text;
+}
+
+#cursor {
+    background-color: lightgray;
+    -webkit-user-select:none;
+}
+
+.hidden {
+    display:none;
+}
+
+.command-list {
+    color: #4E9A06;
+    font-weight:bold;
+}
+
+.welcome-message {
+    font-weight:bold;
+}
+
+a:link, a:visited, a:hover {
+    color: lightgray;
+    text-decoration:none;
+    font-weight:bold;
+    
+}
+
+a:hover {
+    text-decoration: underline;
+}
