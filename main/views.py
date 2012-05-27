@@ -1,11 +1,13 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseRedirect
 from responses import JSONResponse
 from dropbox_integ import DropboxAPI
 from django.core.urlresolvers import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
+from models import ServicesAPI
 
-@ensure_csrf_cookie()
+
+@ensure_csrf_cookie
 def index(request):
     return render(request, "terminal.html")
 
@@ -58,3 +60,20 @@ def dropbox_step2(request):
     if not ret:
         return HttpResponseRedirect(reverse("main:dropbox_auth1"))
     return HttpResponse("You may now close this window.")
+
+def command(request):
+    if request.user.is_anonymous():
+        return HttpResponseForbidden("Please login before attempting a command")
+    creds = request.user.credentials
+    services = []
+    if creds.dropbox_enabled: services.append("dropbox")
+    api = ServicesAPI(request, services)
+    
+    data = dict(request.POST.copy())
+    
+    for key, value in data.items():
+        data[key] = value[0]
+    
+    command = data.pop("command")
+    resp = api.exec_command(command, **data)[0]
+    return JSONResponse(resp)
