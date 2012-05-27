@@ -280,7 +280,6 @@ class Terminal
         if service not in SUPPORTED_SERVICES
             return @output """#{service}: storage service not supported or disabled.
                             Available storage services: <span class="command-list">#{SUPPORTED_SERVICES.join(" ")}</span>"""
-        @output "..."
         url = "/#{service}_auth/"
         win = null
         login_success = (data, textStatus, xhr) =>
@@ -305,5 +304,56 @@ class Terminal
         request = $.getJSON url,login_success.bind @
 
         return false
+    
+    sendCommand:(command, data, callback) ->
+        data["command"] = command
+        console.log data
+        $.post "/command/", data, callback, "json"
+    
+    absolutePath:(path) ->
+        if (not path.startswith "/" or path.startswith "./") and not path.startswith ".."
+            path = path.slice 2 if path.startswith "./"
+            path = if @path.endswith("/") then "#{@path}#{path}" else "#{@path}/#{path}"
+        return path
+    do_cd:(path) ->
+        absPath = @absolutePath path
+        
+        @sendCommand "cd", path:absPath, (data, textStatus, xhr) =>
+            if data.success
+                @path = absPath
+            else if not data.is_dir
+                @output "cd: #{path}: Not a directory"
+            else
+                @output "cd: #{path}: No such file or directory"
+            @newLine()
+        return false
+    do_mkdir:(name)->
+        @sendCommand "mkdir", {"path":@path,"name":name}, (data, textStatus, xhr) =>
+            if data.exists_already
+                @output "mkdir: cannot create directory `#{name}': File exists"
+            else if data.error
+                @output "mkdir: Unknown error: #{data.error}"
+            @newLine()
+        return false
+    do_ls:(path) ->
+        path = if path? then @absolutePath path else @path
+        @sendCommand "ls", {"path":path}, (data, textStatus, xhr) =>
+            if data.error
+                @output "ls: Unknown error: #{data.error}"
+            else
+                contents = []
+                for c in data.contents
+                    if c.is_dir
+                        s = """<span class="directory">"""
+                    else
+                        s = """<span class="file">"""
+                    s += "#{c.path.basename()}</span>"
+                    contents.push s
+                @output """<div class="command-list">#{contents.join("&nbsp;&nbsp;")}</div>"""
+            @newLine()
+        return false
+        
+        
+        
 $(document).ready () ->
     new Terminal()
