@@ -48,6 +48,12 @@ body {
     font-weight:bold;
 }
 
+.command-list .directory {
+    background-color: #4E9A06;
+    color: #355883;
+    font-weight:bold;
+}
+
 .welcome-message {
     font-weight:bold;
 }
