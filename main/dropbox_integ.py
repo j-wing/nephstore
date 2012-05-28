@@ -127,7 +127,89 @@ class DropboxAPI(object):
             else:
                 data['contents'] = [{"path":os.path.basename(path)}]
         return data
+    
+    def mv(self, source, target):
+        client = self._init_client()
+        
+        data = {
+            "success":True,
+            "newPath":"",
+            "error":"",
+            "over_quota":False,
+            "source_exists":True
+        }
+        
+        target = self._target_to_full_name(client, source, target)
+                
+        try:
+            meta = client.file_move(source, target)
+        except ErrorResponse as e:
+            if e.status == 404:
+                data['success'] = False
+                data['source_exists'] = False
+            elif e.status == 503:
+                data['success'] = False
+                data['over_quota'] = True
+            else:
+                data['success'] = False
+                data['error'] = e.error_msg
+        else:
+            data['newPath'] = meta['path']
+        return data
+    
+    def _target_to_full_name(self, client, source, target):
+        try:
+            meta = client.metadata(target)
+        except ErrorResponse:
+            pass
+        else:
+            if meta['is_dir']:
+                return os.path.join(target, os.path.basename(source))
+        return target
+    def cp(self, source, target, recursive):
+        if recursive == 'false':
+            recursive = False
+        client = self._init_client()
+        
+        data = {
+            "success":True,
+            "newPath":"",
+            "error":"",
+            "over_quota":False,
+            "source_exists":True,
+            "source_is_dir":False
+        }
+        
+        try:
+            meta = client.metadata(source)
+        except ErrorResponse:
+            data['success'] = False
+            data['source_exists'] = False
+        else:
+            if meta['is_dir'] and not recursive:
+                data['success'] = False
+                data['source_is_dir'] = True
+        
+        
+        if data['success']:
+            target = self._target_to_full_name(client, source, target)
+            try:
+                meta = client.file_copy(source, target)
+            except ErrorResponse as e:
+                data['success'] = False
+                if e.status == 404:
+                    data['source_exists'] = False
+                elif e.status == 503:
+                    data['over_quota'] = True
+                else:
+                    data['error'] = e.error_msg
+            else:
+                data['newPath'] = meta['path']
+        return data
+
     def exec_command(self, command, *args, **kwargs):
         if command == "cd": return self.cd(**kwargs)
         elif command == "mkdir": return self.mkdir(**kwargs)
         elif command == "ls":return self.ls(**kwargs)
+        elif command == "mv": return self.mv(**kwargs)
+        elif command == "cp": return self.cp(**kwargs)

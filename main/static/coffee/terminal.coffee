@@ -22,7 +22,16 @@ COMMANDS =
         "help":"""
                 Usage: cp SOURCE TARGET [-R]
                 Copies a file or directory from `source` to `target`.
+                -R, -r: Copy SOURCE recursively.
                 """
+    "rm":
+        "args":[1,2]
+        "help":"""
+        Usage: rm [-rf] FILE
+        Removes FILE.
+        -R, -r: Removes FILE recursively, removing all files within FILE if it is a directory.
+        -f: Never prompt for confirmation
+        """
     "mkdir":
         "args":[1,2]
         "help":"""
@@ -82,6 +91,8 @@ To begin, login via OpenID to a Google account. Click the link below to do so.
 - Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download <path>` commands.
 </div>
 """
+
+OVER_QUOTA_MSG = ": Cannot perform requested operation: Over Quota"
 
 class Events
     # Mixin to be used by other classes
@@ -231,7 +242,7 @@ class Terminal
         @stack.push input
         
         #TODO Do not match escaped spaces!
-        [command,args...] = input.split " "
+        [command,args...] = input.splitUnescapedSpaces()
         if command is "help"
             @do_help(args...)
         else if command not in Object.keys COMMANDS
@@ -307,7 +318,6 @@ class Terminal
     
     sendCommand:(command, data, callback) ->
         data["command"] = command
-        console.log data
         $.post "/command/", data, callback, "json"
     
     absolutePath:(path) ->
@@ -315,7 +325,16 @@ class Terminal
             path = path.slice 2 if path.startswith "./"
             path = if @path.endswith("/") then "#{@path}#{path}" else "#{@path}/#{path}"
         return path
+    
+                
     do_cd:(path) ->
+        if path == ".."
+            if @path != "/"
+                @path = @path.split("/").slice(0, -1).join("/")
+                @path = "/" if @path is ""
+            return true
+            
+        path = "/" if not path
         absPath = @absolutePath path
         
         @sendCommand "cd", path:absPath, (data, textStatus, xhr) =>
@@ -352,8 +371,47 @@ class Terminal
                 @output """<div class="command-list">#{contents.join("&nbsp;&nbsp;")}</div>"""
             @newLine()
         return false
+    do_mv:(source, target) ->
+        absSource = @absolutePath source
+        absTarget = @absolutePath target
+        @sendCommand "mv", {"source":absSource, "target":absTarget}, (data, textStatus, xhr) =>
+            if not data.success
+                if not data.source_exists
+                    @output "mv: cannot stat `#{source}': No such file or directory"
+                else if data.over_quota
+                    @output "mv#{OVER_QUOTA_MSG}"
+                else
+                    @output "mv: Unknown error: #{data.error}"
+            @newLine()
+        return false
+    do_cp:(args...) ->
+        recursive = false
         
+        if args.length == 3
+            recursive = true
+            index = null
+            for i in [0...args.length]
+                if args[i].toLowerCase() == "-r"
+                    index = i
+            args.pop i
+        source = args[0]
+        target = args[1]
+                    
+        absSource = @absolutePath source
+        absTarget = @absolutePath target
         
+        @sendCommand "cp", {"source":absSource, "target":absTarget, "recursive":recursive}, (data, textStatus, xhr) =>
+            if not data.success
+                if data.over_quota
+                    @output "mv#{OVER_QUOTA_MSG}"
+                else if not data.source_exists
+                    @output "cp: Cannot stat `#{source}': No such file or directory"
+                else if data.source_is_dir
+                    @output "cp: Omitted directory `#{source}'"
+                else
+                    @output "cp: Unknown error: #{data.error}"
+            @newLine()
+        return false
         
 $(document).ready () ->
     new Terminal()
