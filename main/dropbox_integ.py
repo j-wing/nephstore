@@ -166,6 +166,7 @@ class DropboxAPI(object):
             if meta['is_dir']:
                 return os.path.join(target, os.path.basename(source))
         return target
+    
     def cp(self, source, target, recursive):
         if recursive == 'false':
             recursive = False
@@ -206,10 +207,45 @@ class DropboxAPI(object):
             else:
                 data['newPath'] = meta['path']
         return data
-
+    
+    def rm(self, path, recursive, force):
+        recursive = False if recursive == "false" else True
+        force = False if force == "false" else True
+        
+        client = self._init_client()
+        
+        data = {
+            "success":True,
+            "error":"",
+            "target_exists":True,
+            "is_dir":False
+        }
+        
+        try:
+            meta = client.metadata(path)
+        except ErrorResponse:
+            data['success'] = False
+            data['target_exists'] = False
+        else:
+            if meta['is_dir'] and not recursive:
+                data['success'] = False
+                data['is_dir'] = True
+        
+        if data['success']:
+            try:
+                meta = client.file_delete(path)
+            except ErrorResponse as e:
+                if e.status == 404:
+                    data['success'] = False
+                    data['target_exists'] = False
+                else:
+                    data['success'] = False
+                    data['error'] = e.error_msg
+        return data
     def exec_command(self, command, *args, **kwargs):
         if command == "cd": return self.cd(**kwargs)
         elif command == "mkdir": return self.mkdir(**kwargs)
         elif command == "ls":return self.ls(**kwargs)
         elif command == "mv": return self.mv(**kwargs)
         elif command == "cp": return self.cp(**kwargs)
+        elif command == "rm": return self.rm(**kwargs)

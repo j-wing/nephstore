@@ -107,11 +107,26 @@ class Events
     fire:(name, args...) ->
         handler(args...) for handler in @_events[name] if (@_events? and @_events[name]?)
 
-
+class LocalStorage
+    get:(key) ->
+        value = window.localStorage[key]
+        if not value?
+            return null
+        return JSON.parse value
+    set:(key, value) ->
+        window.localStorage[key] = JSON.stringify value
+        
 class CommandStack
     constructor:() ->
-        @stack = []
         @index = -1
+        @storage = new LocalStorage()
+        
+        stored = @storage.get("commands")
+        if stored?
+            @stack = stored
+        else
+            @storage.set "commands", []
+            @stack = []
     
     reset:() ->
         @index = -1
@@ -119,9 +134,15 @@ class CommandStack
     empty:(reset) ->
         @stack = []
         @reset() if reset or not reset?
+        @storage.set("commands", [])
     
     push:(command) ->
         @stack.splice 0, 0, command
+        old = @storage.get("commands")
+        old.splice 0, 0, command
+        if old.length > 25
+            old.pop -1
+        @storage.set("commands", old)
     
     getItem:(index) ->
         item = @stack[index]
@@ -412,6 +433,29 @@ class Terminal
                     @output "cp: Unknown error: #{data.error}"
             @newLine()
         return false
-        
+    
+    do_rm:(args...) ->
+        [recursive, force] = [false, false]
+        if args.length is 2
+            possible = ["-r", "-f", "-rf", "-fr"]
+            options = if args[0].toLowerCase() in possible then args.shift() else args.pop()
+            switch options.toLowerCase()
+                when "-r" then recursive = true
+                when "-f" then force = true
+                when "-rf","-fr" then [recursive, force] = [true, true]
+            console.log recursive
+            
+        path = args[0]
+        absPath = @absolutePath path
+        @sendCommand "rm", {"force":force, "recursive":recursive, "path":absPath}, (data, textStatus, xhr) =>
+            if not data.success
+                if not data.target_exists
+                    @output "rm: cannot remove `#{path}': No such file or directory"
+                else if data.is_dir
+                    @output "rm: cannot remove `#{path}': is a directory; use -R to remove."
+                else 
+                    @output "rm: Unknown error: #{data.error}"
+            @newLine()
+        return false
 $(document).ready () ->
     new Terminal()
