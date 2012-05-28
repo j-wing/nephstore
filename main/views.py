@@ -64,13 +64,12 @@ def dropbox_step2(request):
 def command(request):
     if request.user.is_anonymous():
         return HttpResponseForbidden("Please login before attempting a command")
-    creds = request.user.credentials
-    services = []
-    if creds.dropbox_enabled: services.append("dropbox")
+    
+    
+    services = request.user.credentials.enabled_services
     api = ServicesAPI(request, services)
     
     data = dict(request.POST.copy())
-    
     for key, value in data.items():
         data[key] = value[0]
     
