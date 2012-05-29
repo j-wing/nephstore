@@ -240,6 +240,7 @@ class Terminal
         div.addClass("line").attr("id", "active-line").append(text).append(entry).append(cursor)
         $("#terminal").append div
         div[0].scrollIntoViewIfNeeded()
+        $("#entry").removeAttr("disabled")
     
     createEntryElement:()->
         span = $ document.createElement "span"
@@ -255,6 +256,7 @@ class Terminal
         setTimeout @blinkCursor.bind(@),750
     
     processCurrentLine:()->
+        $("#entry").attr("disabled", "disabled")
         input = $("#entry").val().trim()
         
         if input is ""
@@ -294,10 +296,7 @@ class Terminal
     
     forceOpenIDLogin:() ->
         $(".welcome-message").after $ """<span>OpenID Login: <a target="_blank" href="#{@user.loginURL}">#{@user.loginURL}</a></span>"""
-    do_cd:(path) ->
-        path = "/" if not path
-        @path = path
-    
+
     do_help:(command)->
         string = """
                 Available commands: <span class="command-list">#{Object.keys(COMMANDS).join(" ")}</span>
@@ -307,6 +306,7 @@ class Terminal
             string = if COMMANDS[command]? then COMMANDS[command].help else "#{command}: command not found\n#{string}"
             
         @output string
+    
     do_login:(service) ->
         service = "google" if not service?
         if service not in SUPPORTED_SERVICES
@@ -363,10 +363,13 @@ class Terminal
                 @path = absPath
             else if not data.is_dir
                 @output "cd: #{path}: Not a directory"
-            else
+            else if not data.exists
                 @output "cd: #{path}: No such file or directory"
+            else
+                @output "cd: Unknown error: #{data.error}"
             @newLine()
         return false
+    
     do_mkdir:(name)->
         @sendCommand "mkdir", {"path":@path,"name":name}, (data, textStatus, xhr) =>
             if data.exists_already
@@ -375,6 +378,7 @@ class Terminal
                 @output "mkdir: Unknown error: #{data.error}"
             @newLine()
         return false
+   
     do_ls:(path) ->
         path = if path? then @absolutePath path else @path
         @sendCommand "ls", {"path":path}, (data, textStatus, xhr) =>
@@ -392,6 +396,7 @@ class Terminal
                 @output """<div class="command-list">#{contents.join("&nbsp;&nbsp;")}</div>"""
             @newLine()
         return false
+    
     do_mv:(source, target) ->
         absSource = @absolutePath source
         absTarget = @absolutePath target
@@ -405,6 +410,7 @@ class Terminal
                     @output "mv: Unknown error: #{data.error}"
             @newLine()
         return false
+    
     do_cp:(args...) ->
         recursive = false
         
@@ -414,7 +420,7 @@ class Terminal
             for i in [0...args.length]
                 if args[i].toLowerCase() == "-r"
                     index = i
-            args.pop i
+            args.splice i, 1
         source = args[0]
         target = args[1]
                     
@@ -443,7 +449,6 @@ class Terminal
                 when "-r" then recursive = true
                 when "-f" then force = true
                 when "-rf","-fr" then [recursive, force] = [true, true]
-            console.log recursive
             
         path = args[0]
         absPath = @absolutePath path
