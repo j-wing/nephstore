@@ -60,7 +60,6 @@ class DropboxAPI(object):
         return client
         
     def cd(self, path):
-        path = path
         client = self._init_client()
         
         success,exists,is_dir, data = True, True,True,[]
@@ -106,11 +105,6 @@ class DropboxAPI(object):
             data['full_path'] = meta['path']
         return data
     
-    def get_root_contents(self):
-        l = [{"path":"/%s" % name} for name in self.request.user.credentials.enabled_services]
-        l.append({"path":"/home"})
-        l.sort()
-        return l
     
     def ls(self, path):
         
@@ -257,6 +251,14 @@ class DropboxAPI(object):
                     data['error'] = e.error_msg
         return data
     def exec_command(self, command, *args, **kwargs):
+        if self.authorization_required():
+            return {
+                "success":False,
+                "error":"Please authorize this app to use Dropbox by running `login dropbox`",
+                "is_dir":True,
+                "exists":True
+            }
+            
         if command == "cd": return self.cd(**kwargs)
         elif command == "mkdir": return self.mkdir(**kwargs)
         elif command == "ls":return self.ls(**kwargs)
