@@ -65,7 +65,6 @@ def command(request):
     if request.user.is_anonymous():
         return HttpResponseForbidden("Please login before attempting a command")
     
-    
     services = request.user.credentials.enabled_services
     api = ServicesAPI(request, services)
     
@@ -74,5 +73,5 @@ def command(request):
         data[key] = value[0]
     
     command = data.pop("command")
-    resp = api.exec_command(command, **data)[0]
+    resp = api.exec_command(command, **data)
     return JSONResponse(resp)
