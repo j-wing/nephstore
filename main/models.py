@@ -8,7 +8,8 @@ from dropbox_integ import DropboxAPI
 import ast
 
 SERVICE_APIS = {
-    "dropbox":DropboxAPI
+    "dropbox":DropboxAPI,
+    "google":""
 }
 
 class ServicesAPI(object):
@@ -22,8 +23,40 @@ class ServicesAPI(object):
             if path.startswith("/%s" % name):
                 return (name, api)
         return (None, None)
-        
+    
+    def modify_services(self, action, service=None):
+        if action == "get":
+            return {
+                "success":True,
+                "services":self.request.user.credentials.enabled_services
+            }
+        elif service in SERVICE_APIS and action in ['enable', 'disable']:
+            creds = self.request.user.credentials
+            s = creds.enabled_services
+            if action == "enable":
+                if service not in creds.enabled_services:
+                    s.append(service)
+                    creds.enabled_services = s
+                    creds.save()
+            else:
+                try:
+                    s.remove(service)
+                except ValueError:
+                    pass
+                else:
+                    creds.enabled_services = s
+                    creds.save()
+            return {
+                "success":True
+            }
+        else:
+            return {
+                "success":False,
+                "error":"Invalid parameters."
+            }
     def exec_command(self, command, *args, **kwargs):
+        if command == "storage":
+            return self.modify_services(*args, **kwargs)
         path = kwargs.get("path")
         source = kwargs.get("source")
         target = kwargs.get("target")
@@ -107,7 +140,7 @@ class DropboxTokenField(models.Field):
         if isinstance(value, dropbox.session.OAuthToken):
             return "%s|%s" % (value.key, value.secret)
         elif isinstance(value, list):
-            return "|".join(list)
+            return "|".join(value)
         return value
 
 class ListField(models.TextField):

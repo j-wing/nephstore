@@ -59,9 +59,8 @@ COMMANDS =
     "storage":
         "args":[0, 2]
         "help":"""
-            View and enable or disable storage methods.
             Usage: storage [enable or disable] [SERVICE]
-            Where SERVICE is either "dropbox" or "drive".
+            View and enable or disable storage methods. SERVICE should be one of: "dropbox", "google"
             """
     "login":
         "args":[0, 1]
@@ -73,7 +72,7 @@ COMMANDS =
     "logout":
         "args":[0,1]
         "help":"""
-            Usage: logout [SERVICE]
+            Usage: logout
             Logs you out of SERVICE.
             """
 SUPPORTED_SERVICES = [
@@ -462,5 +461,28 @@ class Terminal
                     @output "rm: Unknown error: #{data.error}"
             @newLine()
         return false
+    
+    do_storage:(op, service) ->
+        if not op? and not service?
+            console.log op
+            op = "get"
+        else
+            if op not in ["enable", "disable"]
+                return @do_help "storage"
+            if service not in SUPPORTED_SERVICES
+                return @output "storage: Service not supported: `#{service}'"
+        
+        @sendCommand "storage", {"action":op, "service":service}, (data, textStatus, xhr) =>
+            if not data.success
+                @output "storage: Unknown error: data.error"
+            else if data.success and op == "enable"
+                @output "Use `login `#{service}' to authorize this app to access your account."
+            else if data.services
+                @output """
+                Enabled services: <span class="command-list">#{data.services.join(" ")}</span>
+                Use `storage disable &lt;service>` to disable."""
+            @newLine()
+        return false
+        
 $(document).ready () ->
     new Terminal()
