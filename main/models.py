@@ -15,13 +15,71 @@ class ServicesAPI(object):
     
     def __init__(self, request, services):
         self.request = request
-        self.services = [api(request) for name, api in SERVICE_APIS.items() if name in services]
+        self.services = services
+    
+    def get_api_from_path(self, path):
+        for name, api in SERVICE_APIS.items():
+            if path.startswith("/%s" % name):
+                return (name, api)
+        return (None, None)
         
     def exec_command(self, command, *args, **kwargs):
-        responses = []
-        for service in self.services:
-            responses.append(service.exec_command(command, *args, **kwargs))
-        return responses
+        path = kwargs.get("path")
+        source = kwargs.get("source")
+        target = kwargs.get("target")
+        
+        api = None
+        
+        if path:
+            if path == "/":
+                if command == "ls":
+                    return {
+                        "success":True,
+                        "contents":self.get_root_contents()
+                    }
+                elif command == "cd":
+                    return {
+                        "success":True,
+                        "exists":True,
+                        "is_dir":True
+                    }
+                
+            else:
+                name,api = self.get_api_from_path(path)
+                if name:
+                    kwargs['path'] = kwargs['path'][len(name)+1:]
+        elif source and target:
+            if source.count("/") == 1 or target.count("/") == 1:
+                return {
+                    "success":False,
+                    "error":"Cannot perform modification operations to service directories"
+                }
+                
+            (src_name, api) = self.get_api_from_path(source)
+            (target_name, target_api) = self.get_api_from_path(target)
+            
+            if api is not target_api:
+                return {
+                    "success":False,
+                    "error":"Performing operations between services is not yet supported."
+                }
+            elif src_name and target_name:
+                kwargs['source'] = kwargs['source'][len(src_name)+1:]
+                kwargs['target'] = kwargs['target'][len(target_name)+1:]
+                
+        if api:
+            return api(self.request).exec_command(command, *args, **kwargs)
+        else:
+            return {
+                "success":False,
+                "error":"Unrecognized service."
+            }
+
+    def get_root_contents(self):
+        l = [{"path":"/%s" % name} for name in self.services]
+        l.append({"path":"/home"})
+        l.sort()
+        return l
 
 
 @receiver(post_save, sender=User)
