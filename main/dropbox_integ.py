@@ -250,6 +250,30 @@ class DropboxAPI(object):
                     data['success'] = False
                     data['error'] = e.error_msg
         return data
+    
+    def download(self, path):
+        client = self._init_client()
+        
+        data = {
+            "success":True,
+            "url":"",
+            "error":"",
+            "exists":True
+        }
+        
+        try:
+            meta = client.share(path)
+        except ErrorResponse as e:
+            data['success'] = False
+            if e.status == 404:
+                data['exists'] = False
+            else:
+                data['error'] = e.error_msg
+        else:
+            data['url'] = meta['url']
+        
+        return data
+                
     def exec_command(self, command, *args, **kwargs):
         if self.authorization_required():
             return {
@@ -265,3 +289,4 @@ class DropboxAPI(object):
         elif command == "mv": return self.mv(**kwargs)
         elif command == "cp": return self.cp(**kwargs)
         elif command == "rm": return self.rm(**kwargs)
+        elif command == "download": return self.download(**kwargs)

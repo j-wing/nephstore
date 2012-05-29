@@ -463,6 +463,18 @@ class Terminal
             @newLine()
         return false
     
+    do_download:(path) ->
+        absPath = @absolutePath path
+        @sendCommand "download", path:absPath, (data, textStatus, xhr) =>
+            if data.success
+                window.open data.url
+            else if not data.exists
+                @output "download: cannot download #{path}: No such file or directory"
+            else
+                @output "download: Unknown error: #{data.error}"
+            @newLine()
+        return false
+    
     do_storage:(op, service) ->
         if not op? and not service?
             console.log op
