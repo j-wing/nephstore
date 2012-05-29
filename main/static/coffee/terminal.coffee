@@ -415,12 +415,12 @@ class Terminal
         recursive = false
         
         if args.length == 3
-            recursive = true
             index = null
             for i in [0...args.length]
                 if args[i].toLowerCase() == "-r"
+                    recursive = true
                     index = i
-            args.splice i, 1
+            args.splice index, 1
         source = args[0]
         target = args[1]
                     
