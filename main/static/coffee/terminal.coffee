@@ -136,12 +136,13 @@ class CommandStack
         @storage.set("commands", [])
     
     push:(command) ->
-        @stack.splice 0, 0, command
-        old = @storage.get("commands")
-        old.splice 0, 0, command
-        if old.length > 25
-            old.pop -1
-        @storage.set("commands", old)
+        if @stack[0] != command
+            @stack.splice 0, 0, command
+            old = @storage.get("commands")
+            old.splice 0, 0, command
+            if old.length > 25
+                old.pop -1
+            @storage.set("commands", old)
     
     getItem:(index) ->
         item = @stack[index]
