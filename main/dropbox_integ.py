@@ -279,7 +279,6 @@ class DropboxAPI(object):
         data = {
             "success":True,
             "error":"",
-            "over_quota":False
         }
         
         try:
@@ -287,7 +286,7 @@ class DropboxAPI(object):
         except ErrorResponse as e:
             data['success'] = False
             if e.status == 503:
-                data['over_quota'] = True
+                data['error'] = "Over Quota"
             else:
                 data['error'] = e.error_msg
         return data
