@@ -327,8 +327,17 @@ class Terminal
             # Down Arrow
             else if e.which == 40
                 @recallCommand false
+                
+            else if e.which == 67 and e.ctrlKey
+                @keyboardInterrupt()
+            
             else
                 @setCommand e.target.value
+    
+    keyboardInterrupt:() ->
+        @newLine()
+        throw new Error "KeyboardInterrupt"
+    
     newLine:() ->
         $("#active-entry,#active-line").attr("id", "")
         $("#cursor").remove()
