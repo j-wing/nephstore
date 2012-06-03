@@ -317,20 +317,27 @@ class Terminal
             , 50)
             
         entry.keyup (e) =>
+            # Ctrl+C
+            interrupt = (e.which == 67 and e.ctrlKey)
+            if @promptHandler and not interrupt
+                @promptHandler e
+            
+            else if interrupt
+                @keyboardInterrupt()
+                
             # Return key
-            if e.which == 13
+            else if e.which == 13
                 @processCurrentLine()
                 entry.val("")
+                
             # Up arrow
             else if e.which == 38
                 @recallCommand true
+                
             # Down Arrow
             else if e.which == 40
                 @recallCommand false
-                
-            else if e.which == 67 and e.ctrlKey
-                @keyboardInterrupt()
-            
+
             else
                 @setCommand e.target.value
     
@@ -351,6 +358,7 @@ class Terminal
         $("#terminal").append div
         div[0].scrollIntoViewIfNeeded()
         $("#entry").removeAttr("disabled")
+        @promptHandler = null
     
     createEntryElement:()->
         span = $ document.createElement "span"
