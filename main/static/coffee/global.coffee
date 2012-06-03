@@ -4,6 +4,11 @@ String.prototype.endswith = (string) ->
     return (@slice(-(string.length)) is string)
 String.prototype.basename = () ->
     return @split("/").splice(-1)
+String.prototype.capitalize = () ->
+    split = @split(" ")
+    for i in [0...split.length]
+        split[i] = split[i][0].toUpperCase() + split[i][1...]
+    return split.join(" ")
 String.prototype.splitUnescapedSpaces = () ->
     spaces = @split " "
     resp = []
