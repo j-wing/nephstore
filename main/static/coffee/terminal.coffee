@@ -365,7 +365,6 @@ class Terminal
         
         @stack.push input
         
-        #TODO Do not match escaped spaces!
         [command,args...] = input.splitUnescapedSpaces()
         if command is "help"
             @do_help(args...)
@@ -385,6 +384,7 @@ class Terminal
         div = $(document.createElement("div")).addClass("output")
         if keepNewLines or typeof html != "string" then div.html html else div.html html.replace /\n/g, "<br />"
         $("#active-line").after div
+        $("#cursor").insertAfter div
     
     setCommand:(command, copyToInput) ->
         $("#active-entry").html command.replace(/\s/g,"&nbsp;").replace(/</g, "&lt;")
