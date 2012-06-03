@@ -357,7 +357,7 @@ class Terminal
         div.addClass("line").attr("id", "active-line").append(text).append(entry).append(cursor)
         $("#terminal").append div
         div[0].scrollIntoViewIfNeeded()
-        $("#entry").removeAttr("disabled")
+        @setEntryEnabled true
         @promptHandler = null
     
     createEntryElement:()->
@@ -373,8 +373,11 @@ class Terminal
         $("#cursor").toggleClass("hidden")
         setTimeout @blinkCursor.bind(@),750
     
+    setEntryEnabled:(enabled) ->
+        if enabled then $("#entry").removeAttr("disabled") else $("#entry").attr("disabled", "disabled")
+    
     processCurrentLine:()->
-        $("#entry").attr("disabled", "disabled")
+        @setEntryEnabled false
         input = $("#entry").val().trim()
         
         if input is ""
@@ -397,10 +400,14 @@ class Terminal
             @newLine()
         @stack.reset()
     
-    output:(html, keepNewLines) ->
+    output:(html, append, keepNewLines) ->
         div = $(document.createElement("div")).addClass("output")
         if keepNewLines or typeof html != "string" then div.html html else div.html html.replace /\n/g, "<br />"
-        $("#active-line").after div
+        
+        if append
+            $("#terminal").append html
+        else 
+            $("#active-line").after div
         $("#cursor").insertAfter div
     
     setCommand:(command, copyToInput) ->
@@ -597,7 +604,6 @@ class Terminal
     
     do_storage:(op, service) ->
         if not op? and not service?
-            console.log op
             op = "get"
         else
             if op not in ["enable", "disable"]
@@ -607,7 +613,7 @@ class Terminal
         
         @sendCommand "storage", {"action":op, "service":service}, (data, textStatus, xhr) =>
             if not data.success
-                @output "storage: Unknown error: data.error"
+                @output "storage: Unknown error: #{data.error}"
             else if data.success and op == "enable"
                 @output "Use `login `#{service}' to authorize this app to access your account."
             else if data.services
@@ -617,5 +623,73 @@ class Terminal
             @newLine()
         return false
     
+    _uploadFile:(fileInput, successHandler) ->
+        data = fileInput.dataset
+        xhr = new XMLHttpRequest()
+        terminal = $("#terminal")
+        percent = $(document.createElement("span")).addClass("upload-percent").html("0%&nbsp;").appendTo terminal
+        hashes = $(document.createElement("span")).addClass("upload-hashes").appendTo terminal
+#         $("#cursor").after hashes
+        
+        xhr.upload.addEventListener "progress", (e) =>
+            if e.lengthComputable
+                p = Math.round((e.loaded * 100) / e.total)
+                percent.html "#{p}%&nbsp;"
+                hashes.text "#".repeat p
+                
+        xhr.addEventListener "load", (e) =>
+            percent.html "100%&nbsp;"
+            hashes.text "#".repeat 100
+            @output "<br />Complete.<br />", true
+            successHandler(e)
+        
+        xhr.open "POST", "/upload/?overwrite=#{data.overwrite}&services=#{data.services}&target=#{data.target}", true
+        xhr.setRequestHeader "X-CSRFToken", $.cookie 'csrftoken'
+        xhr.send fileInput.files[0]
+        
+        
+    do_upload:(args...) ->
+#         absPath = @absolutePath path
+        options = new Options COMMANDS.upload.options
+        
+        target = options.processOptions(args)[0]
+        if not target
+            return @outputError "upload: Invalid target path"
+        
+        for service in options.services
+            if service not in SUPPORTED_SERVICES
+                return @outputError "upload: service not supported: `#{service}'"
+        @setEntryEnabled true
+        
+        successHandler = (e) =>
+            json = JSON.parse e.target.responseText
+            if json.success
+                results = []
+                for result in json.results
+                    s = "#{result.service.capitalize()}: "
+                    if result.result.success
+                        s += "Successful."
+                    else
+                        s += "Failed: #{result.result.error}"
+                    results.push s
+                @output results.join("<br />"), true
+            else
+                @output "upload: Failed to upload: #{json.error}"
+            @newLine()
+        
+        @promptHandler = (e) =>
+            if e.which == 13
+                lastUpload = $(".file-upload").slice(-1)[0]
+                @_uploadFile lastUpload, successHandler
+            
+        @output """
+        Select the file to upload below, then hit enter:
+<input type="file" name="file" class="file-upload" data-overwrite="#{options.overwrite}" data-services="#{options.services.join(",")}" data-target="#{target}" />
+        
+        """
+        
+        $(".file-upload").change (e) =>
+            $("#entry")[0].focus()
+        return false
 $(document).ready () ->
     new Terminal()
