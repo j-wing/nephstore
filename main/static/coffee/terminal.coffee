@@ -39,11 +39,26 @@ COMMANDS =
             Creates a directory 'NAME' in the current working directory.
             """
     "upload":
-        "args":[0]
+        "args":[1, 2, 3]
         "help":"""
-                Usage: upload
-                Brings up the upload dialog box.
+                Usage: upload TARGET_PATH [--services=dropbox,google] [--overwrite]
+                Brings up the upload dialog box to upload a file.
+                TARGET_PATH: Path of the resulting file on the target services.
+                -s, --services: Comma-separated list of services to upload the file to.
+                -o, --overwrite: Overwrite an existing file of the same.
                 """
+        "options":
+            "overwrite":
+                "type":"bool"
+                "longForm":"overwrite"
+                "shortForm":"o"
+                "default":false
+            "services":
+                "type":"list"
+                "longForm":"services"
+                "shortForm":"s"
+                "default":["dropbox", "google"]
+
     "download":
         "args":[1]
         "help":"""
@@ -155,8 +170,95 @@ class CommandStack
     next:() ->
         if @index-1 >= -1 then @index--
         if @index < 0 then return "" else return @getItem @index
-        
 
+class Options
+    ###
+        Options parser class.
+        
+        Pass the expected arguments as an Object in the following format:
+        For the possible arguments as follows:
+        "--switchExample -s --var=bob --list=item1,item2"
+        {
+            "argName":{
+                "type":"bool",
+                "longForm":"switchExample",
+                "shortForm":"sE"
+                "default":false
+            },
+            "shortSwitch":{
+                "type":"bool",
+                "longForm":"short",
+                "shortForm":"s",
+                "default":false
+            },
+            "varExample":{
+                "type":"var",
+                "longForm":"var",
+                "shortForm":"v",
+                "default":"joe"
+            },
+            "listExample":{
+                "type":"list",
+                "longForm":"list",
+                "shortForm":"l",
+                "default":["item3", "item4"]
+            }
+        }
+    ###
+        
+    constructor:(@options) ->
+    
+    stripArgs:(args) ->
+        return (arg for arg in args when (arg.startswith "-")) or []
+        
+    _getSwitchIndex:(long, short, args) ->
+        i = args.indexOf "--#{long}"
+        return if i >= 0 then i else args.indexOf "-#{short}"
+    
+    _getAssignedArgIndex:(long, short, args) ->
+        for i in [0...args.length]
+            return i if (args[i].startswith("--#{long}") or args[i].startswith("-#{short}"))
+        return -1
+        
+    processOptions:(oargs) ->
+        args = @stripArgs oargs
+        parsedIndices = []
+        
+        for name, data of @options
+            switch data.type
+                when "bool"
+                    i = @_getSwitchIndex data.longForm, data.shortForm, args
+                    if i >= 0
+                        parsedIndices.push i
+                        @[name] = (not data["default"])
+                    else
+                        @[name] = data['default']
+                when "list"
+#                     r = new RegExp "(?:(?:--#{data.longForm}|-#{data.shortForm})=)((\\w+)(?:,*(\\w+)))", "g"
+                    i = @_getAssignedArgIndex data.longForm, data.shortForm, args
+                    if i >= 0
+                        try 
+                            list = args[i].split("=")[1].split(",")
+                        catch e
+                            @[name] = data['default']
+                            break
+                        @[name] = list
+                        parsedIndices.push i
+                    else
+                        @[name] = data['default']
+                when "var"
+                    i = @_getAssignedArgIndex data.longForm, data.shortForm, args
+                    if i >= 0
+                        @[name] = args[i]
+                        parsedIndices.push i
+                    else
+                        @[name] = data['default']
+        
+        # Eliminate args that were parsed out
+        for i in parsedIndices
+            oargs.splice oargs.indexOf(args[i]), 1
+        return oargs
+        
 class User extends Events
     constructor:(@uid, @name, @email) ->
         if @uid
@@ -187,8 +289,7 @@ class User extends Events
         @fire "userInfoReceived"
     toString:() ->
         return @email
-            
-    
+
 class Terminal
     constructor:() ->
         @element = $("#terminal")
@@ -423,6 +524,8 @@ class Terminal
             args.splice index, 1
         source = args[0]
         target = args[1]
+        if not source or not target
+            return @output "cp: invalid source or target."
                     
         absSource = @absolutePath source
         absTarget = @absolutePath target
@@ -496,6 +599,6 @@ class Terminal
                 Use `storage disable &lt;service>` to disable."""
             @newLine()
         return false
-        
+    
 $(document).ready () ->
     new Terminal()
