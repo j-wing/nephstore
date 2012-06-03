@@ -3,8 +3,9 @@ from django.http import HttpResponse, HttpResponseForbidden, HttpResponseRedirec
 from responses import JSONResponse
 from dropbox_integ import DropboxAPI
 from django.core.urlresolvers import reverse
+from django.core.files.base import ContentFile
 from django.views.decorators.csrf import ensure_csrf_cookie
-from models import ServicesAPI
+from models import ServicesAPI, SERVICE_APIS
 
 
 @ensure_csrf_cookie
@@ -61,6 +62,42 @@ def dropbox_step2(request):
         return HttpResponseRedirect(reverse("main:dropbox_auth1"))
     return HttpResponse("You may now close this window.")
 
+def upload_frame(request):
+    return render(request, "upload-frame.html")
+    
+def handle_upload(request):
+    if request.method != "POST":
+        return HttpResponse("Invalid request")
+        
+    path = request.GET.get("target")
+    overwrite = request.GET.get("overwrite", False)
+    services = request.GET.get("services", "").split(",")
+    
+    if not path:
+        return JSONResponse({
+            "success":False,
+            "error":"No target path provided"
+        })
+    elif not len(services):
+        return JSONResponse({
+            "success":False,
+            "error":"No services provided"
+        })
+    
+    user_services = request.user.credentials.enabled_services
+    for service in services
+        if service not in user_services:
+            return JSONResponse({
+                "success":False,
+                "error":"Service '%s' is not enabled. \
+                        Either remove it from the list of target services, or enable it with 'storage enable %s' before continuing. "
+            })
+    
+    resp = {}
+    for service in services:
+        resp[service] = SERVICE_APIS[service](request).upload(path=path, overwrite=overwrite, file=ContentFile(request.body))
+    return JSONResponse(resp)
+    
 def command(request):
     if request.user.is_anonymous():
         return HttpResponseForbidden("Please login before attempting a command")
@@ -70,8 +107,9 @@ def command(request):
     
     data = dict(request.POST.copy())
     for key, value in data.items():
-        data[key] = value[0]
-    
+        if len(value) == 1:
+            data[key] = value[0]
+            
     command = data.pop("command")
     resp = api.exec_command(command, **data)
     return JSONResponse(resp)
