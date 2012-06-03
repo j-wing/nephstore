@@ -85,7 +85,7 @@ def handle_upload(request):
         })
     
     user_services = request.user.credentials.enabled_services
-    for service in services
+    for service in services:
         if service not in user_services:
             return JSONResponse({
                 "success":False,
@@ -93,9 +93,15 @@ def handle_upload(request):
                         Either remove it from the list of target services, or enable it with 'storage enable %s' before continuing. "
             })
     
-    resp = {}
+    resp = {
+        "success":True,
+        "results":[]
+    }
     for service in services:
-        resp[service] = SERVICE_APIS[service](request).upload(path=path, overwrite=overwrite, file=ContentFile(request.body))
+        resp['results'].append({
+            "service":service,
+            "result":SERVICE_APIS[service](request).upload(path=path, overwrite=overwrite, file=ContentFile(request.body))
+        })
     return JSONResponse(resp)
     
 def command(request):
