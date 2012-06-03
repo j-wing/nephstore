@@ -19,3 +19,5 @@ String.prototype.splitUnescapedSpaces = () ->
         else
             resp.push spaces[i]
     return resp
+String.prototype.repeat = (num) ->
+    return new Array(num + 1).join @
