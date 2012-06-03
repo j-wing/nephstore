@@ -273,7 +273,25 @@ class DropboxAPI(object):
             data['url'] = meta['url']
         
         return data
-                
+    
+    def upload(self, path, file, overwrite=False, **kwargs):
+        client = self._init_client()    
+        data = {
+            "success":True,
+            "error":"",
+            "over_quota":False
+        }
+        
+        try:
+            meta = client.put_file(path, file, overwrite)
+        except ErrorResponse as e:
+            data['success'] = False
+            if e.status == 503:
+                data['over_quota'] = True
+            else:
+                data['error'] = e.error_msg
+        return data
+            
     def exec_command(self, command, *args, **kwargs):
         if self.authorization_required():
             return {
@@ -290,3 +308,4 @@ class DropboxAPI(object):
         elif command == "cp": return self.cp(**kwargs)
         elif command == "rm": return self.rm(**kwargs)
         elif command == "download": return self.download(**kwargs)
+        elif command == "upload": return self.upload(**kwargs)
