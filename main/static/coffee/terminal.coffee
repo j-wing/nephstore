@@ -619,6 +619,7 @@ class Terminal
             else if data.services
                 @output """
                 Enabled services: <span class="command-list">#{data.services.join(" ")}</span>
+                Available services: <span class="command-list">#{SUPPORTED_SERVICES.join(" ")}</span>
                 Use `storage disable &lt;service>` to disable."""
             @newLine()
         return false
