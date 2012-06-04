@@ -777,7 +777,7 @@
         if (!data.success) {
           _this.output("storage: Unknown error: " + data.error);
         } else if (data.success && op === "enable") {
-          _this.output("Use `login `" + service + "' to authorize this app to access your account.");
+          _this.output("Successfully enabled " + service + ".\nUse `login `" + service + "' to authorize this app to access your account.");
         } else if (data.services) {
           _this.output("Enabled services: <span class=\"command-list\">" + (data.services.join(" ")) + "</span>\nAvailable services: <span class=\"command-list\">" + (SUPPORTED_SERVICES.join(" ")) + "</span>\nUse `storage disable &lt;service>` to disable.");
         }

@@ -615,7 +615,7 @@ class Terminal
             if not data.success
                 @output "storage: Unknown error: #{data.error}"
             else if data.success and op == "enable"
-                @output "Use `login `#{service}' to authorize this app to access your account."
+                @output "Successfully enabled #{service}.\nUse `login `#{service}' to authorize this app to access your account."
             else if data.services
                 @output """
                 Enabled services: <span class="command-list">#{data.services.join(" ")}</span>
