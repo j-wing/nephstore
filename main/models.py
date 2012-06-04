@@ -5,7 +5,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 import dropbox
 from dropbox_integ import DropboxAPI
-import ast, oauth
+import ast
+import oauth.oauth as oauth
 
 SERVICE_APIS = {
     "dropbox":DropboxAPI,
