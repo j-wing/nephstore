@@ -5,7 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 import dropbox
 from dropbox_integ import DropboxAPI
-import ast
+import ast, oauth
 
 SERVICE_APIS = {
     "dropbox":DropboxAPI,
@@ -129,7 +129,7 @@ class DropboxTokenField(models.Field):
     def to_python(self, value=None):
         if not value:
             return None
-        if isinstance(value, dropbox.session.OAuthToken):
+        if isinstance(value, oauth.OAuthToken):
             return "%s|%s" % (value.key, value.secret)
         elif isinstance(value, list):
             return value
@@ -137,7 +137,7 @@ class DropboxTokenField(models.Field):
             return value.split("|")
         return value
     def get_db_prep_value(self, value, connection, prepared=False):
-        if isinstance(value, dropbox.session.OAuthToken):
+        if isinstance(value, oauth.OAuthToken):
             return "%s|%s" % (value.key, value.secret)
         elif isinstance(value, list):
             return "|".join(value)
