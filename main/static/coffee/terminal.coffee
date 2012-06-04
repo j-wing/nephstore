@@ -88,7 +88,7 @@ COMMANDS =
         "args":[0,1]
         "help":"""
             Usage: logout
-            Logs you out of SERVICE.
+            Logs you out NephStore. You will need log back in via OpenID to continue using NephStore. 
             """
 SUPPORTED_SERVICES = [
     "dropbox"
@@ -623,6 +623,9 @@ class Terminal
                 Use `storage disable &lt;service>` to disable."""
             @newLine()
         return false
+    
+    do_logout:() ->
+        window.location.href = "/logout/"
     
     _uploadFile:(fileInput, successHandler) ->
         data = fileInput.dataset

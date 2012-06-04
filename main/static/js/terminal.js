@@ -66,7 +66,7 @@
     },
     "logout": {
       "args": [0, 1],
-      "help": "Usage: logout\nLogs you out of SERVICE."
+      "help": "Usage: logout\nLogs you out NephStore. You will need log back in via OpenID to continue using NephStore. "
     }
   };
 
@@ -784,6 +784,10 @@
         return _this.newLine();
       });
       return false;
+    };
+
+    Terminal.prototype.do_logout = function() {
+      return window.location.href = "/logout/";
     };
 
     Terminal.prototype._uploadFile = function(fileInput, successHandler) {
