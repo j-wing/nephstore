@@ -1,1 +1,2 @@
-/main/static/bob/joe
+*.pyc
+*~
