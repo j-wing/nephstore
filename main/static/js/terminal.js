@@ -506,7 +506,7 @@
     };
 
     Terminal.prototype.forceOpenIDLogin = function() {
-      return $(".welcome-message").after($("<span>OpenID Login: <a target=\"_blank\" href=\"" + this.user.loginURL + "\">" + this.user.loginURL + "</a></span>"));
+      return $(".welcome-message").after($("<span>OpenID Login: <a href=\"" + this.user.loginURL + "\">" + this.user.loginURL + "</a></span>"));
     };
 
     Terminal.prototype.do_help = function(command) {

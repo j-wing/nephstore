@@ -420,7 +420,7 @@ class Terminal
             @setCommand command,true
     
     forceOpenIDLogin:() ->
-        $(".welcome-message").after $ """<span>OpenID Login: <a target="_blank" href="#{@user.loginURL}">#{@user.loginURL}</a></span>"""
+        $(".welcome-message").after $ """<span>OpenID Login: <a href="#{@user.loginURL}">#{@user.loginURL}</a></span>"""
 
     do_help:(command)->
         string = """
