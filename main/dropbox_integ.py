@@ -108,32 +108,24 @@ class DropboxAPI(object):
     
     def ls(self, path):
         
-        if path == "/":
-            
-            data = {
-                "success":True,
-                "contents":self.get_root_contents()
-            }
+        client = self._init_client()
+        
+        data = {
+            "success":True,
+            "error":"",
+            "contents":[]
+        }
+        
+        try:
+            meta = client.metadata(path)
+        except ErrorResponse as e:
+            data['success'] = False
+            data['error'] = e.error_msg
         else:
-            client = self._init_client()
-            
-            data = {
-                "success":True,
-                "error":"",
-                "contents":[]
-            }
-            
-            try:
-                meta = client.metadata(path)
-            except ErrorResponse as e:
-                data['success'] = False
-                data['error'] = e.error_msg
+            if meta['is_dir']:
+                data['contents'] = meta['contents']
             else:
-                print meta
-                if meta['is_dir']:
-                    data['contents'] = meta['contents']
-                else:
-                    data['contents'] = [{"path":os.path.basename(path)}]
+                data['contents'] = [{"path":os.path.basename(path)}]
         return data
     
     def mv(self, source, target):
