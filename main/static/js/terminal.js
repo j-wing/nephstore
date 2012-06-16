@@ -613,18 +613,19 @@
       this.sendCommand("ls", {
         "path": path
       }, function(data, textStatus, xhr) {
-        var c, contents, s, _i, _len, _ref;
+        var c, contents, elem, s, _i, _len, _ref;
         if (data.error) {
           _this.output("ls: Unknown error: " + data.error);
         } else {
           contents = [];
+          elem = data.contents.length > 15 ? "div" : "span";
           _ref = data.contents;
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             c = _ref[_i];
             if (c.is_dir) {
-              s = "<span class=\"directory\">";
+              s = "<" + elem + " class=\"directory\">";
             } else {
-              s = "<span class=\"file\">";
+              s = "<" + elem + " class=\"file\">";
             }
             s += "" + (c.path.basename()) + "</span>";
             contents.push(s);

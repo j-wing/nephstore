@@ -511,11 +511,13 @@ class Terminal
                 @output "ls: Unknown error: #{data.error}"
             else
                 contents = []
+                
+                elem = if data.contents.length > 15 then "div" else "span"
                 for c in data.contents
                     if c.is_dir
-                        s = """<span class="directory">"""
+                        s = """<#{elem} class="directory">"""
                     else
-                        s = """<span class="file">"""
+                        s = """<#{elem} class="file">"""
                     s += "#{c.path.basename()}</span>"
                     contents.push s
                 @output """<div class="command-list">#{contents.join("&nbsp;&nbsp;")}</div>"""
