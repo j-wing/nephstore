@@ -435,10 +435,11 @@
     };
 
     Terminal.prototype.createCursor = function() {
-      var span;
-      span = $(document.createElement("span"));
-      span.html("&nbsp;");
-      return span.attr("id", "cursor");
+      var cdiv, div;
+      div = $(document.createElement("div"));
+      div.attr("id", "cursor-wrapper");
+      cdiv = $(document.createElement("span")).html("&nbsp;").attr("id", "cursor").appendTo(div);
+      return cdiv;
     };
 
     Terminal.prototype.blinkCursor = function() {

@@ -337,7 +337,7 @@ class Terminal
             # Down Arrow
             else if e.which == 40
                 @recallCommand false
-
+            
             else
                 @setCommand e.target.value
     
@@ -365,9 +365,11 @@ class Terminal
         span.attr("id", "active-entry")
     
     createCursor:() ->
-        span =  $ document.createElement "span"
-        span.html("&nbsp;")
-        span.attr "id","cursor"
+        div = $ document.createElement "div"
+        div.attr "id", "cursor-wrapper"
+        
+        cdiv = $(document.createElement("span")).html("&nbsp;").attr("id","cursor").appendTo(div)
+        return cdiv
     
     blinkCursor:() ->
         $("#cursor").toggleClass("hidden")

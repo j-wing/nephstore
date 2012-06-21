@@ -33,6 +33,10 @@ body {
     cursor: text;
 }
 
+#cursor-wrapper {
+    position:relative;
+}
+
 #cursor {
     background-color: lightgray;
     -webkit-user-select:none;
