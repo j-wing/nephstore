@@ -35,6 +35,8 @@ body {
 
 #cursor-wrapper {
     position:relative;
+    width: 1em;
+    display: inline;
 }
 
 #cursor {

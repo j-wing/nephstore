@@ -368,6 +368,7 @@
         _this = this;
       this.element = $("#terminal");
       this.path = "/";
+      this.cursorOffset = 0;
       this.stack = new CommandStack();
       this.output(WELCOME_MESSAGE);
       this.blinkCursor();
@@ -402,11 +403,25 @@
           return _this.recallCommand(true);
         } else if (e.which === 40) {
           return _this.recallCommand(false);
+        } else if (e.which === 37) {
+          return _this.offsetCursorPosition(-10);
+        } else if (e.which === 39) {
+          return _this.offsetCursorPosition(10);
         } else {
           return _this.setCommand(e.target.value);
         }
       });
     }
+
+    Terminal.prototype.offsetCursorPosition = function(px) {
+      var cursorIndex, nextIndex;
+      cursorIndex = this.cursorOffset / 10;
+      nextIndex = cursorIndex + (px / 10);
+      if ((nextIndex <= 0) && (Math.abs(nextIndex) <= $("#entry").val().length)) {
+        this.cursorOffset += px;
+        return $("#cursor-wrapper").css("left", "" + this.cursorOffset + "px");
+      }
+    };
 
     Terminal.prototype.keyboardInterrupt = function() {
       this.newLine();
@@ -439,7 +454,7 @@
       div = $(document.createElement("div"));
       div.attr("id", "cursor-wrapper");
       cdiv = $(document.createElement("span")).html("&nbsp;").attr("id", "cursor").appendTo(div);
-      return cdiv;
+      return div;
     };
 
     Terminal.prototype.blinkCursor = function() {

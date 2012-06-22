@@ -294,6 +294,7 @@ class Terminal
     constructor:() ->
         @element = $("#terminal")
         @path = "/"
+        @cursorOffset = 0
         
         @stack = new CommandStack()
 
@@ -338,8 +339,23 @@ class Terminal
             else if e.which == 40
                 @recallCommand false
             
+            #Left Arrow
+            else if e.which == 37
+                @offsetCursorPosition -10
+            
+            # Right Arrow
+            else if e.which == 39
+                @offsetCursorPosition 10
+            
             else
                 @setCommand e.target.value
+    
+    offsetCursorPosition:(px) ->
+        cursorIndex = (@cursorOffset / 10)
+        nextIndex = cursorIndex + (px/10)
+        if (nextIndex <= 0) and (Math.abs(nextIndex) <= $("#entry").val().length)
+            @cursorOffset += px
+            $("#cursor-wrapper").css("left", "#{@cursorOffset}px")
     
     keyboardInterrupt:() ->
         @newLine()
@@ -369,7 +385,7 @@ class Terminal
         div.attr "id", "cursor-wrapper"
         
         cdiv = $(document.createElement("span")).html("&nbsp;").attr("id","cursor").appendTo(div)
-        return cdiv
+        return div
     
     blinkCursor:() ->
         $("#cursor").toggleClass("hidden")
