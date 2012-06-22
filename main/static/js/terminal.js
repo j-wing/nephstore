@@ -369,6 +369,7 @@
       this.element = $("#terminal");
       this.path = "/";
       this.cursorOffset = 0;
+      this.cursorMoving = false;
       this.stack = new CommandStack();
       this.output(WELCOME_MESSAGE);
       this.blinkCursor();
@@ -414,12 +415,20 @@
     }
 
     Terminal.prototype.offsetCursorPosition = function(px) {
-      var cursorIndex, nextIndex;
+      var cursorIndex, nextIndex,
+        _this = this;
+      this.cursorMoving = 1;
+      $("#cursor").removeClass("hidden");
+      clearTimeout(this.cursorTimer);
       cursorIndex = this.cursorOffset / 10;
       nextIndex = cursorIndex + (px / 10);
       if ((nextIndex <= 0) && (Math.abs(nextIndex) <= $("#entry").val().length)) {
         this.cursorOffset += px;
-        return $("#cursor-wrapper").css("left", "" + this.cursorOffset + "px");
+        $("#cursor-wrapper").css("left", "" + this.cursorOffset + "px");
+        this.cursorMoving = 2;
+        return this.cursorTimer = setTimeout(function() {
+          if (_this.cursorMoving === 2) return _this.cursorMoving = 0;
+        }, 300);
       }
     };
 
@@ -458,7 +467,7 @@
     };
 
     Terminal.prototype.blinkCursor = function() {
-      $("#cursor").toggleClass("hidden");
+      if (this.cursorMoving === 0) $("#cursor").toggleClass("hidden");
       return setTimeout(this.blinkCursor.bind(this), 750);
     };
 

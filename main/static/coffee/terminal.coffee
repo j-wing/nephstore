@@ -295,6 +295,7 @@ class Terminal
         @element = $("#terminal")
         @path = "/"
         @cursorOffset = 0
+        @cursorMoving = false
         
         @stack = new CommandStack()
 
@@ -351,11 +352,19 @@ class Terminal
                 @setCommand e.target.value
     
     offsetCursorPosition:(px) ->
+        @cursorMoving = 1
+        $("#cursor").removeClass("hidden")
+        clearTimeout @cursorTimer
+        
         cursorIndex = (@cursorOffset / 10)
         nextIndex = cursorIndex + (px/10)
         if (nextIndex <= 0) and (Math.abs(nextIndex) <= $("#entry").val().length)
             @cursorOffset += px
             $("#cursor-wrapper").css("left", "#{@cursorOffset}px")
+            @cursorMoving = 2
+            @cursorTimer = setTimeout () =>
+                @cursorMoving = 0 if @cursorMoving == 2
+            , 300
     
     keyboardInterrupt:() ->
         @newLine()
@@ -388,7 +397,8 @@ class Terminal
         return div
     
     blinkCursor:() ->
-        $("#cursor").toggleClass("hidden")
+        if @cursorMoving == 0
+            $("#cursor").toggleClass("hidden")
         setTimeout @blinkCursor.bind(@),750
     
     setEntryEnabled:(enabled) ->
