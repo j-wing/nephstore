@@ -578,7 +578,7 @@
         if (path.startswith("./")) path = path.slice(2);
         path = this.path.endswith("/") ? "" + this.path + path : "" + this.path + "/" + path;
       }
-      return path;
+      return normpath(path);
     };
 
     Terminal.prototype.do_cd = function(path) {

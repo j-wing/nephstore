@@ -492,7 +492,7 @@ class Terminal
         if (not path.startswith "/" or path.startswith "./") and not path.startswith ".."
             path = path.slice 2 if path.startswith "./"
             path = if @path.endswith("/") then "#{@path}#{path}" else "#{@path}/#{path}"
-        return path
+        return normpath path
     
                 
     do_cd:(path) ->
