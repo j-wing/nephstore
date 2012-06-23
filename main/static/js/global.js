@@ -40,4 +40,29 @@
     return new Array(num + 1).join(this);
   };
 
+  window.normpath = function(path) {
+    var comp, comps, dot, initial_slashes, new_comps, slash, _i, _len, _ref;
+    _ref = ['/', '.'], slash = _ref[0], dot = _ref[1];
+    if (path === '') return path;
+    initial_slashes = path.startswith('/');
+    if (initial_slashes && path.startswith('//') && !path.startswith('///')) {
+      initial_slashes = 2;
+    }
+    comps = path.split('/');
+    new_comps = [];
+    for (_i = 0, _len = comps.length; _i < _len; _i++) {
+      comp = comps[_i];
+      if (comp === '' || comp === '.') continue;
+      if (comp !== '..' || (!initial_slashes && !new_comps) || (new_comps && new_comps.slice(-1) === '..')) {
+        new_comps.push(comp);
+      } else if (new_comps) {
+        new_comps.pop();
+      }
+    }
+    comps = new_comps;
+    path = comps.join(slash);
+    if (initial_slashes) path = slash.repeat(initial_slashes) + path;
+    return path || dot;
+  };
+
 }).call(this);
