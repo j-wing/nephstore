@@ -369,6 +369,7 @@ class Terminal
         $(".welcome-message").after $ """<span>OpenID Login: <a href="#{@user.loginURL}">#{@user.loginURL}</a></span>"""
 
     keyboardInterrupt:() ->
+        $("#entry").val("")
         @newLine()
         throw new Error "KeyboardInterrupt"
     

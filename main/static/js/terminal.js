@@ -442,6 +442,7 @@
     };
 
     Terminal.prototype.keyboardInterrupt = function() {
+      $("#entry").val("");
       this.newLine();
       throw new Error("KeyboardInterrupt");
     };
