@@ -51,8 +51,22 @@
       "help": "Usage: mv [SOURCE] [DEST]\nor:    mv [SOURCE] [DIRECTORY]\nRename SOURCE to DEST, or move SOURCE(s) to DIRECTORY."
     },
     "rm": {
-      "args": [1, 2],
-      "help": "Usage: rm [-rf] FILE\nRemoves FILE.\n-R, -r: Removes FILE recursively, removing all files within FILE if it is a directory.\n-f: Never prompt for confirmation"
+      "args": [1, 2, 3],
+      "help": "Usage: rm [-rf] FILE\nRemoves FILE.\n-R, -r: Removes FILE recursively, removing all files within FILE if it is a directory.\n-f: Never prompt for confirmation",
+      "options": {
+        "force": {
+          "type": "bool",
+          "longForm": "force",
+          "shortForm": "f",
+          "default": false
+        },
+        "recursive": {
+          "type": "bool",
+          "longForm": "recursive",
+          "shortForm": "r",
+          "default": false
+        }
+      }
     },
     "storage": {
       "args": [0, 2],
@@ -746,30 +760,16 @@
     };
 
     Terminal.prototype.do_rm = function() {
-      var absPath, args, force, options, path, possible, recursive, _ref, _ref2, _ref3,
+      var absPath, args, options, path,
         _this = this;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      _ref = [false, false], recursive = _ref[0], force = _ref[1];
-      if (args.length === 2) {
-        possible = ["-r", "-f", "-rf", "-fr"];
-        options = (_ref2 = args[0].toLowerCase(), __indexOf.call(possible, _ref2) >= 0) ? args.shift() : args.pop();
-        switch (options.toLowerCase()) {
-          case "-r":
-            recursive = true;
-            break;
-          case "-f":
-            force = true;
-            break;
-          case "-rf":
-          case "-fr":
-            _ref3 = [true, true], recursive = _ref3[0], force = _ref3[1];
-        }
-      }
-      path = args[0];
+      options = new Options(COMMANDS['rm']['options']);
+      path = options.processOptions(args)[0];
+      if (!path) return this.output("rm: missing operand");
       absPath = this.absolutePath(path);
       this.sendCommand("rm", {
-        "force": force,
-        "recursive": recursive,
+        "force": options.force,
+        "recursive": options.recursive,
         "path": absPath
       }, function(data, textStatus, xhr) {
         if (!data.success) {

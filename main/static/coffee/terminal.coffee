@@ -62,13 +62,24 @@ COMMANDS =
                 Rename SOURCE to DEST, or move SOURCE(s) to DIRECTORY.
                 """
     "rm":
-        "args":[1,2]
+        "args":[1,2,3]
         "help":"""
         Usage: rm [-rf] FILE
         Removes FILE.
         -R, -r: Removes FILE recursively, removing all files within FILE if it is a directory.
         -f: Never prompt for confirmation
         """
+        "options":
+            "force":
+                "type":"bool"
+                "longForm":"force"
+                "shortForm":"f"
+                "default":false
+            "recursive":
+                "type":"bool"
+                "longForm":"recursive"
+                "shortForm":"r"
+                "default":false
     "storage":
         "args":[0, 2]
         "help":"""
@@ -610,18 +621,15 @@ class Terminal
     
     
     do_rm:(args...) ->
-        [recursive, force] = [false, false]
-        if args.length is 2
-            possible = ["-r", "-f", "-rf", "-fr"]
-            options = if args[0].toLowerCase() in possible then args.shift() else args.pop()
-            switch options.toLowerCase()
-                when "-r" then recursive = true
-                when "-f" then force = true
-                when "-rf","-fr" then [recursive, force] = [true, true]
+        options = new Options COMMANDS['rm']['options']
+        
+        [path] = options.processOptions args
+        
+        if not path
+            return @output "rm: missing operand"
             
-        path = args[0]
         absPath = @absolutePath path
-        @sendCommand "rm", {"force":force, "recursive":recursive, "path":absPath}, (data, textStatus, xhr) =>
+        @sendCommand "rm", {"force":options.force, "recursive":options.recursive, "path":absPath}, (data, textStatus, xhr) =>
             if not data.success
                 if not data.target_exists
                     @output "rm: cannot remove `#{path}': No such file or directory"
