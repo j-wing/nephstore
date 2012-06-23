@@ -368,7 +368,7 @@
         _this = this;
       this.element = $("#terminal");
       this.path = "/";
-      this.cursorMoving = false;
+      this.cursorMoving = 0;
       this.stack = new CommandStack();
       this.output(WELCOME_MESSAGE);
       this.blinkCursor();
@@ -584,15 +584,9 @@
     Terminal.prototype.do_cd = function(path) {
       var absPath,
         _this = this;
-      if (path === "..") {
-        if (this.path !== "/") {
-          this.path = this.path.split("/").slice(0, -1).join("/");
-          if (this.path === "") this.path = "/";
-        }
-        return true;
-      }
       if (!path) path = "/";
       absPath = this.absolutePath(path);
+      if (absPath === "/") return true;
       this.sendCommand("cd", {
         path: absPath
       }, function(data, textStatus, xhr) {

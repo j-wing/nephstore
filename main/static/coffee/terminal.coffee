@@ -294,7 +294,7 @@ class Terminal
     constructor:() ->
         @element = $("#terminal")
         @path = "/"
-        @cursorMoving = false
+        @cursorMoving = 0
         
         @stack = new CommandStack()
 
@@ -496,14 +496,11 @@ class Terminal
     
                 
     do_cd:(path) ->
-        if path == ".."
-            if @path != "/"
-                @path = @path.split("/").slice(0, -1).join("/")
-                @path = "/" if @path is ""
-            return true
-            
         path = "/" if not path
         absPath = @absolutePath path
+        
+        if absPath == "/"
+            return true
         
         @sendCommand "cd", path:absPath, (data, textStatus, xhr) =>
             if data.success
