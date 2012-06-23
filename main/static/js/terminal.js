@@ -12,7 +12,15 @@
     },
     "cp": {
       "args": [2, 3],
-      "help": "Usage: cp SOURCE TARGET [-R]\nCopies a file or directory from `source` to `target`.\n-R, -r: Copy SOURCE recursively."
+      "help": "Usage: cp SOURCE TARGET [-R]\nCopies a file or directory from `source` to `target`.\n-R, -r: Copy SOURCE recursively.",
+      "options": {
+        "recursive": {
+          "type": "bool",
+          "longForm": "recursive",
+          "shortForm": "r",
+          "default": false
+        }
+      }
     },
     "download": {
       "args": [1],
@@ -72,7 +80,7 @@
 
   SUPPORTED_SERVICES = ["dropbox", "google"];
 
-  WELCOME_MESSAGE = "<div class=\"welcome-message\">\nWelcome to NephStore.\n\nTo begin, login via OpenID to a Google account. Click the link below to do so. \n- Once the terminal is available, use the `storage` command to enable and disable storage services. By default, no service is enabled. \n- Once you've enabled a service(s), use `login &lt;service name&gt;` for each service you enable to authorize Nephstore to access your account.\n- Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download <path>` commands.\n</div>";
+  WELCOME_MESSAGE = "<div class=\"welcome-message\">\nWelcome to NephStore.\n\nTo begin, login via OpenID to a Google account. Click the link below to do so. \n- Once the terminal is available, use the `storage` command to enable and disable storage services. By default, no service is enabled. \n- Once you've enabled a service(s), use `login &lt;service name&gt;` for each service you enable to authorize Nephstore to access your account.\n- Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download &lt;path&gt;` commands.\n</div>";
 
   OVER_QUOTA_MSG = ": Cannot perform requested operation: Over Quota";
 
@@ -220,6 +228,14 @@
                     "default":["item3", "item4"]
                 }
             }
+            
+            Usage:
+                Call the constructor with options in the format described above.
+                
+                `options = new Options COMMANDS['command']['options']`
+                
+                Then call proccessOptions, which returns any unknown or unidentified arguments.
+                `args = options.processOptions args`
     */
     function Options(options) {
       this.options = options;
@@ -566,29 +582,20 @@
     };
 
     Terminal.prototype.do_cp = function() {
-      var absSource, absTarget, args, i, index, recursive, source, target, _ref,
+      var absSource, absTarget, args, options, source, target, _ref,
         _this = this;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      recursive = false;
-      if (args.length === 3) {
-        index = null;
-        for (i = 0, _ref = args.length; 0 <= _ref ? i < _ref : i > _ref; 0 <= _ref ? i++ : i--) {
-          if (args[i].toLowerCase() === "-r") {
-            recursive = true;
-            index = i;
-          }
-        }
-        args.splice(index, 1);
+      options = new Options(COMMANDS['cp']['options']);
+      _ref = options.processOptions(args), source = _ref[0], target = _ref[1];
+      if (!(source && target)) {
+        return this.output("cp:  missing destination file operand after `" + source + "'\nTry help cp for more information");
       }
-      source = args[0];
-      target = args[1];
-      if (!source || !target) return this.output("cp: invalid source or target.");
       absSource = this.absolutePath(source);
       absTarget = this.absolutePath(target);
       this.sendCommand("cp", {
         "source": absSource,
         "target": absTarget,
-        "recursive": recursive
+        "recursive": options.recursive
       }, function(data, textStatus, xhr) {
         if (!data.success) {
           if (data.over_quota) {

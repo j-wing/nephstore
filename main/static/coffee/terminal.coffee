@@ -11,6 +11,12 @@ COMMANDS =
                 Copies a file or directory from `source` to `target`.
                 -R, -r: Copy SOURCE recursively.
                 """
+        "options":
+            "recursive":
+                "type":"bool"
+                "longForm":"recursive"
+                "shortForm":"r"
+                "default":false
     "download":
         "args":[1]
         "help":"""
@@ -102,7 +108,7 @@ Welcome to NephStore.
 To begin, login via OpenID to a Google account. Click the link below to do so. 
 - Once the terminal is available, use the `storage` command to enable and disable storage services. By default, no service is enabled. 
 - Once you've enabled a service(s), use `login &lt;service name&gt;` for each service you enable to authorize Nephstore to access your account.
-- Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download <path>` commands.
+- Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download &lt;path&gt;` commands.
 </div>
 """
 
@@ -204,6 +210,14 @@ class Options
                 "default":["item3", "item4"]
             }
         }
+        
+        Usage:
+            Call the constructor with options in the format described above.
+            
+            `options = new Options COMMANDS['command']['options']`
+            
+            Then call proccessOptions, which returns any unknown or unidentified arguments.
+            `args = options.processOptions args`
     ###
         
     constructor:(@options) ->
@@ -473,24 +487,17 @@ class Terminal
         return false
         
     do_cp:(args...) ->
-        recursive = false
+        options = new Options COMMANDS['cp']['options']
         
-        if args.length == 3
-            index = null
-            for i in [0...args.length]
-                if args[i].toLowerCase() == "-r"
-                    recursive = true
-                    index = i
-            args.splice index, 1
-        source = args[0]
-        target = args[1]
-        if not source or not target
-            return @output "cp: invalid source or target."
-                    
+        [source, target] = options.processOptions args
+        
+        if not (source and target)
+            return @output "cp:  missing destination file operand after `#{source}'\nTry help cp for more information"
+        
         absSource = @absolutePath source
         absTarget = @absolutePath target
         
-        @sendCommand "cp", {"source":absSource, "target":absTarget, "recursive":recursive}, (data, textStatus, xhr) =>
+        @sendCommand "cp", {"source":absSource, "target":absTarget, "recursive":options.recursive}, (data, textStatus, xhr) =>
             if not data.success
                 if data.over_quota
                     @output "mv#{OVER_QUOTA_MSG}"
@@ -674,7 +681,6 @@ class Terminal
         
         
     do_upload:(args...) ->
-#         absPath = @absolutePath path
         options = new Options COMMANDS.upload.options
         
         target = options.processOptions(args)[0]
