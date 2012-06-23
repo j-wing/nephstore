@@ -238,7 +238,19 @@ class Options
         
     _getSwitchIndex:(long, short, args) ->
         i = args.indexOf "--#{long}"
-        return if i >= 0 then i else args.indexOf "-#{short}"
+        
+        if i >= 0
+            return i
+        else
+            # Short switches can have multiple combined in one
+            i = 0
+            matchedIndex = -1
+            for arg in args
+                i++
+                if arg.startswith("-") and arg.toLowerCase().indexOf(short) >= 0
+                    matchedIndex = i
+                    break
+            return matchedIndex
     
     _getAssignedArgIndex:(long, short, args) ->
         for i in [0...args.length]
@@ -280,7 +292,7 @@ class Options
                         @[name] = data['default']
         
         # Eliminate args that were parsed out
-        for i in parsedIndices
+        for i in $.unique parsedIndices
             oargs.splice oargs.indexOf(args[i]), 1
         return oargs
         

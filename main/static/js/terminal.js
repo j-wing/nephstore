@@ -269,12 +269,22 @@
     };
 
     Options.prototype._getSwitchIndex = function(long, short, args) {
-      var i;
+      var arg, i, matchedIndex, _i, _len;
       i = args.indexOf("--" + long);
       if (i >= 0) {
         return i;
       } else {
-        return args.indexOf("-" + short);
+        i = 0;
+        matchedIndex = -1;
+        for (_i = 0, _len = args.length; _i < _len; _i++) {
+          arg = args[_i];
+          i++;
+          if (arg.startswith("-") && arg.toLowerCase().indexOf(short) >= 0) {
+            matchedIndex = i;
+            break;
+          }
+        }
+        return matchedIndex;
       }
     };
 
@@ -289,7 +299,7 @@
     };
 
     Options.prototype.processOptions = function(oargs) {
-      var args, data, i, list, name, parsedIndices, _i, _len, _ref;
+      var args, data, i, list, name, parsedIndices, _i, _len, _ref, _ref2;
       args = this.stripArgs(oargs);
       parsedIndices = [];
       _ref = this.options;
@@ -330,8 +340,9 @@
             }
         }
       }
-      for (_i = 0, _len = parsedIndices.length; _i < _len; _i++) {
-        i = parsedIndices[_i];
+      _ref2 = $.unique(parsedIndices);
+      for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+        i = _ref2[_i];
         oargs.splice(oargs.indexOf(args[i]), 1);
       }
       return oargs;
