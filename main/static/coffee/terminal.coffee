@@ -294,7 +294,6 @@ class Terminal
     constructor:() ->
         @element = $("#terminal")
         @path = "/"
-        @cursorOffset = 0
         @cursorMoving = false
         
         @stack = new CommandStack()
@@ -339,32 +338,27 @@ class Terminal
             # Down Arrow
             else if e.which == 40
                 @recallCommand false
-            
-            #Left Arrow
-            else if e.which == 37
-                @offsetCursorPosition -10
-            
-            # Right Arrow
-            else if e.which == 39
-                @offsetCursorPosition 10
-            
+                        
             else
                 @setCommand e.target.value
+                @updateCursorPosition()
+
+        
     
-    offsetCursorPosition:(px) ->
+    updateCursorPosition:(px) ->
         @cursorMoving = 1
         $("#cursor").removeClass("hidden")
         clearTimeout @cursorTimer
         
-        cursorIndex = (@cursorOffset / 10)
-        nextIndex = cursorIndex + (px/10)
-        if (nextIndex <= 0) and (Math.abs(nextIndex) <= $("#entry").val().length)
-            @cursorOffset += px
-            $("#cursor-wrapper").css("left", "#{@cursorOffset}px")
-            @cursorMoving = 2
-            @cursorTimer = setTimeout () =>
-                @cursorMoving = 0 if @cursorMoving == 2
-            , 300
+        elem = $("#entry")[0]
+        caretIndex = elem.selectionStart
+        cursorIndex = ((caretIndex) - elem.value.length) * 10
+        
+        $("#cursor-wrapper").css("left", "#{cursorIndex}px")
+        @cursorMoving = 2
+        @cursorTimer = setTimeout () =>
+            @cursorMoving = 0 if @cursorMoving == 2
+        , 300
     
     keyboardInterrupt:() ->
         @newLine()

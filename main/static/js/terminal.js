@@ -368,7 +368,6 @@
         _this = this;
       this.element = $("#terminal");
       this.path = "/";
-      this.cursorOffset = 0;
       this.cursorMoving = false;
       this.stack = new CommandStack();
       this.output(WELCOME_MESSAGE);
@@ -404,32 +403,27 @@
           return _this.recallCommand(true);
         } else if (e.which === 40) {
           return _this.recallCommand(false);
-        } else if (e.which === 37) {
-          return _this.offsetCursorPosition(-10);
-        } else if (e.which === 39) {
-          return _this.offsetCursorPosition(10);
         } else {
-          return _this.setCommand(e.target.value);
+          _this.setCommand(e.target.value);
+          return _this.updateCursorPosition();
         }
       });
     }
 
-    Terminal.prototype.offsetCursorPosition = function(px) {
-      var cursorIndex, nextIndex,
+    Terminal.prototype.updateCursorPosition = function(px) {
+      var caretIndex, cursorIndex, elem,
         _this = this;
       this.cursorMoving = 1;
       $("#cursor").removeClass("hidden");
       clearTimeout(this.cursorTimer);
-      cursorIndex = this.cursorOffset / 10;
-      nextIndex = cursorIndex + (px / 10);
-      if ((nextIndex <= 0) && (Math.abs(nextIndex) <= $("#entry").val().length)) {
-        this.cursorOffset += px;
-        $("#cursor-wrapper").css("left", "" + this.cursorOffset + "px");
-        this.cursorMoving = 2;
-        return this.cursorTimer = setTimeout(function() {
-          if (_this.cursorMoving === 2) return _this.cursorMoving = 0;
-        }, 300);
-      }
+      elem = $("#entry")[0];
+      caretIndex = elem.selectionStart;
+      cursorIndex = (caretIndex - elem.value.length) * 10;
+      $("#cursor-wrapper").css("left", "" + cursorIndex + "px");
+      this.cursorMoving = 2;
+      return this.cursorTimer = setTimeout(function() {
+        if (_this.cursorMoving === 2) return _this.cursorMoving = 0;
+      }, 300);
     };
 
     Terminal.prototype.keyboardInterrupt = function() {
