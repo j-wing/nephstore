@@ -361,6 +361,7 @@ class Terminal
         , 300
     
     keyboardInterrupt:() ->
+        $("#entry").val("")
         @newLine()
         throw new Error "KeyboardInterrupt"
     
