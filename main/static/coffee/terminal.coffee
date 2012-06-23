@@ -1,17 +1,4 @@
 COMMANDS = 
-    "ls":
-        "args":[0,1]
-        "help":"""
-                Usage: ls [DIRECTORY]
-                List information about DIRECTORY (the current directory by default).
-                """
-    "mv":
-        "args":[2]
-        "help":"""
-                Usage: mv [SOURCE] [DEST]
-                or:    mv [SOURCE] [DIRECTORY]
-                Rename SOURCE to DEST, or move SOURCE(s) to DIRECTORY.
-                """
     "cd":
         "args":[0,1]
         "help":"""Usage: cd [PATH]
@@ -24,6 +11,50 @@ COMMANDS =
                 Copies a file or directory from `source` to `target`.
                 -R, -r: Copy SOURCE recursively.
                 """
+    "download":
+        "args":[1]
+        "help":"""
+                Usage: download PATH
+                Downloads the file or directory at PATH from an enabled storage service.
+                """
+    "help":
+        "args":[0,1]
+        "help":"""
+                Usage: help [COMMAND]
+                I'm just here to help, bro.
+                """
+    "login":
+        "args":[0, 1]
+        "help":"""
+                Usage: login [SERVICE] 
+                Brings up the authentication and authorization dialog for SERVICE.
+                If SERVICE is not specified, defaults to Google, if enabled.
+                """
+    "logout":
+        "args":[0,1]
+        "help":"""
+            Usage: logout
+            Logs you out NephStore. You will need log back in via OpenID to continue using NephStore. 
+            """
+    "ls":
+        "args":[0,1]
+        "help":"""
+                Usage: ls [DIRECTORY]
+                List information about DIRECTORY (the current directory by default).
+                """
+    "mkdir":
+        "args":[1,2]
+        "help":"""
+            Usage: mkdir NAME
+            Creates a directory 'NAME' in the current working directory.
+            """
+    "mv":
+        "args":[2]
+        "help":"""
+                Usage: mv [SOURCE] [DEST]
+                or:    mv [SOURCE] [DIRECTORY]
+                Rename SOURCE to DEST, or move SOURCE(s) to DIRECTORY.
+                """
     "rm":
         "args":[1,2]
         "help":"""
@@ -32,11 +63,11 @@ COMMANDS =
         -R, -r: Removes FILE recursively, removing all files within FILE if it is a directory.
         -f: Never prompt for confirmation
         """
-    "mkdir":
-        "args":[1,2]
+    "storage":
+        "args":[0, 2]
         "help":"""
-            Usage: mkdir NAME
-            Creates a directory 'NAME' in the current working directory.
+            Usage: storage [enable or disable] [SERVICE]
+            View and enable or disable storage methods. SERVICE should be one of: "dropbox", "google"
             """
     "upload":
         "args":[1, 2, 3]
@@ -59,37 +90,6 @@ COMMANDS =
                 "shortForm":"s"
                 "default":["dropbox", "google"]
 
-    "download":
-        "args":[1]
-        "help":"""
-                Usage: download PATH
-                Downloads the file or directory at PATH from an enabled storage service.
-                """
-    "help":
-        "args":[0,1]
-        "help":"""
-                Usage: help [COMMAND]
-                I'm just here to help, bro.
-                """
-    "storage":
-        "args":[0, 2]
-        "help":"""
-            Usage: storage [enable or disable] [SERVICE]
-            View and enable or disable storage methods. SERVICE should be one of: "dropbox", "google"
-            """
-    "login":
-        "args":[0, 1]
-        "help":"""
-                Usage: login [SERVICE] 
-                Brings up the authentication and authorization dialog for SERVICE.
-                If SERVICE is not specified, defaults to Google, if enabled.
-                """
-    "logout":
-        "args":[0,1]
-        "help":"""
-            Usage: logout
-            Logs you out NephStore. You will need log back in via OpenID to continue using NephStore. 
-            """
 SUPPORTED_SERVICES = [
     "dropbox"
     "google"
@@ -101,7 +101,7 @@ Welcome to NephStore.
 
 To begin, login via OpenID to a Google account. Click the link below to do so. 
 - Once the terminal is available, use the `storage` command to enable and disable storage services. By default, no service is enabled. 
-- Once you've enabled a service(s), use `login <service name>` for each service you enable to authorize Nephstore to access your account.
+- Once you've enabled a service(s), use `login &lt;service name&gt;` for each service you enable to authorize Nephstore to access your account.
 - Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download <path>` commands.
 </div>
 """
@@ -343,23 +343,31 @@ class Terminal
                 @setCommand e.target.value
                 @updateCursorPosition()
 
-        
+    absolutePath:(path) ->
+        if (not path.startswith "/" or path.startswith "./") and not path.startswith ".."
+            path = path.slice 2 if path.startswith "./"
+            path = if @path.endswith("/") then "#{@path}#{path}" else "#{@path}/#{path}"
+        return normpath path
+
+    blinkCursor:() ->
+        if @cursorMoving == 0
+            $("#cursor").toggleClass("hidden")
+        setTimeout @blinkCursor.bind(@),750
     
-    updateCursorPosition:(px) ->
-        @cursorMoving = 1
-        $("#cursor").removeClass("hidden")
-        clearTimeout @cursorTimer
+    createCursor:() ->
+        div = $ document.createElement "div"
+        div.attr "id", "cursor-wrapper"
         
-        elem = $("#entry")[0]
-        caretIndex = elem.selectionStart
-        cursorIndex = ((caretIndex) - elem.value.length) * 10
-        
-        $("#cursor-wrapper").css("left", "#{cursorIndex}px")
-        @cursorMoving = 2
-        @cursorTimer = setTimeout () =>
-            @cursorMoving = 0 if @cursorMoving == 2
-        , 300
+        cdiv = $(document.createElement("span")).html("&nbsp;").attr("id","cursor").appendTo(div)
+        return div
+
+    createEntryElement:()->
+        span = $ document.createElement "span"
+        span.attr("id", "active-entry")
     
+    forceOpenIDLogin:() ->
+        $(".welcome-message").after $ """<span>OpenID Login: <a href="#{@user.loginURL}">#{@user.loginURL}</a></span>"""
+
     keyboardInterrupt:() ->
         @newLine()
         throw new Error "KeyboardInterrupt"
@@ -379,25 +387,16 @@ class Terminal
         @setEntryEnabled true
         @promptHandler = null
     
-    createEntryElement:()->
-        span = $ document.createElement "span"
-        span.attr("id", "active-entry")
-    
-    createCursor:() ->
-        div = $ document.createElement "div"
-        div.attr "id", "cursor-wrapper"
+    output:(html, append, keepNewLines) ->
+        div = $(document.createElement("div")).addClass("output")
+        if keepNewLines or typeof html != "string" then div.html html else div.html html.replace /\n/g, "<br />"
         
-        cdiv = $(document.createElement("span")).html("&nbsp;").attr("id","cursor").appendTo(div)
-        return div
-    
-    blinkCursor:() ->
-        if @cursorMoving == 0
-            $("#cursor").toggleClass("hidden")
-        setTimeout @blinkCursor.bind(@),750
-    
-    setEntryEnabled:(enabled) ->
-        if enabled then $("#entry").removeAttr("disabled") else $("#entry").attr("disabled", "disabled")
-    
+        if append
+            $("#terminal").append html
+        else 
+            $("#active-line").after div
+        $("#cursor").insertAfter div
+            
     processCurrentLine:()->
         @setEntryEnabled false
         input = $("#entry").val().trim()
@@ -421,28 +420,99 @@ class Terminal
         if (returnValue? and returnValue) or (not returnValue?)
             @newLine()
         @stack.reset()
-    
-    output:(html, append, keepNewLines) ->
-        div = $(document.createElement("div")).addClass("output")
-        if keepNewLines or typeof html != "string" then div.html html else div.html html.replace /\n/g, "<br />"
         
-        if append
-            $("#terminal").append html
-        else 
-            $("#active-line").after div
-        $("#cursor").insertAfter div
-    
-    setCommand:(command, copyToInput) ->
-        $("#active-entry").html command.replace(/\s/g,"&nbsp;").replace(/</g, "&lt;")
-        $("#entry").val command if copyToInput
-    
     recallCommand:(previous) ->
         command = if previous then @stack.previous() else @stack.next()
         if command != null
             @setCommand command,true
     
-    forceOpenIDLogin:() ->
-        $(".welcome-message").after $ """<span>OpenID Login: <a href="#{@user.loginURL}">#{@user.loginURL}</a></span>"""
+    sendCommand:(command, data, callback) ->
+        data["command"] = command
+        $.post "/command/", data, callback, "json"
+
+    setCommand:(command, copyToInput) ->
+        $("#active-entry").html command.replace(/\s/g,"&nbsp;").replace(/</g, "&lt;")
+        $("#entry").val command if copyToInput
+    
+    setEntryEnabled:(enabled) ->
+        if enabled then $("#entry").removeAttr("disabled") else $("#entry").attr("disabled", "disabled")    
+    
+    updateCursorPosition:(px) ->
+        @cursorMoving = 1
+        $("#cursor").removeClass("hidden")
+        clearTimeout @cursorTimer
+        
+        elem = $("#entry")[0]
+        caretIndex = elem.selectionStart
+        cursorIndex = ((caretIndex) - elem.value.length) * 10
+        
+        $("#cursor-wrapper").css("left", "#{cursorIndex}px")
+        @cursorMoving = 2
+        @cursorTimer = setTimeout () =>
+            @cursorMoving = 0 if @cursorMoving == 2
+        , 300
+
+    do_cd:(path) ->
+        path = "/" if not path
+        absPath = @absolutePath path
+        
+        if absPath == "/"
+            return true
+        
+        @sendCommand "cd", path:absPath, (data, textStatus, xhr) =>
+            if data.success
+                @path = absPath
+            else if not data.is_dir
+                @output "cd: #{path}: Not a directory"
+            else if not data.exists
+                @output "cd: #{path}: No such file or directory"
+            else
+                @output "cd: Unknown error: #{data.error}"
+            @newLine()
+        return false
+        
+    do_cp:(args...) ->
+        recursive = false
+        
+        if args.length == 3
+            index = null
+            for i in [0...args.length]
+                if args[i].toLowerCase() == "-r"
+                    recursive = true
+                    index = i
+            args.splice index, 1
+        source = args[0]
+        target = args[1]
+        if not source or not target
+            return @output "cp: invalid source or target."
+                    
+        absSource = @absolutePath source
+        absTarget = @absolutePath target
+        
+        @sendCommand "cp", {"source":absSource, "target":absTarget, "recursive":recursive}, (data, textStatus, xhr) =>
+            if not data.success
+                if data.over_quota
+                    @output "mv#{OVER_QUOTA_MSG}"
+                else if not data.source_exists
+                    @output "cp: Cannot stat `#{source}': No such file or directory"
+                else if data.source_is_dir
+                    @output "cp: Omitted directory `#{source}'"
+                else
+                    @output "cp: Unknown error: #{data.error}"
+            @newLine()
+        return false
+
+    do_download:(path) ->
+        absPath = @absolutePath path
+        @sendCommand "download", path:absPath, (data, textStatus, xhr) =>
+            if data.success
+                window.open data.url
+            else if not data.exists
+                @output "download: cannot download #{path}: No such file or directory"
+            else
+                @output "download: Unknown error: #{data.error}"
+            @newLine()
+        return false
 
     do_help:(command)->
         string = """
@@ -483,46 +553,10 @@ class Terminal
         request = $.getJSON url,login_success.bind @
 
         return false
-    
-    sendCommand:(command, data, callback) ->
-        data["command"] = command
-        $.post "/command/", data, callback, "json"
-    
-    absolutePath:(path) ->
-        if (not path.startswith "/" or path.startswith "./") and not path.startswith ".."
-            path = path.slice 2 if path.startswith "./"
-            path = if @path.endswith("/") then "#{@path}#{path}" else "#{@path}/#{path}"
-        return normpath path
-    
-                
-    do_cd:(path) ->
-        path = "/" if not path
-        absPath = @absolutePath path
-        
-        if absPath == "/"
-            return true
-        
-        @sendCommand "cd", path:absPath, (data, textStatus, xhr) =>
-            if data.success
-                @path = absPath
-            else if not data.is_dir
-                @output "cd: #{path}: Not a directory"
-            else if not data.exists
-                @output "cd: #{path}: No such file or directory"
-            else
-                @output "cd: Unknown error: #{data.error}"
-            @newLine()
-        return false
-    
-    do_mkdir:(name)->
-        @sendCommand "mkdir", {"path":@path,"name":name}, (data, textStatus, xhr) =>
-            if data.exists_already
-                @output "mkdir: cannot create directory `#{name}': File exists"
-            else if data.error
-                @output "mkdir: Unknown error: #{data.error}"
-            @newLine()
-        return false
-   
+
+    do_logout:() ->
+        window.location.href = "/logout/"
+
     do_ls:(path) ->
         path = if path? then @absolutePath path else @path
         @sendCommand "ls", {"path":path}, (data, textStatus, xhr) =>
@@ -543,6 +577,15 @@ class Terminal
             @newLine()
         return false
     
+    do_mkdir:(name)->
+        @sendCommand "mkdir", {"path":@path,"name":name}, (data, textStatus, xhr) =>
+            if data.exists_already
+                @output "mkdir: cannot create directory `#{name}': File exists"
+            else if data.error
+                @output "mkdir: Unknown error: #{data.error}"
+            @newLine()
+        return false
+       
     do_mv:(source, target) ->
         absSource = @absolutePath source
         absTarget = @absolutePath target
@@ -557,36 +600,6 @@ class Terminal
             @newLine()
         return false
     
-    do_cp:(args...) ->
-        recursive = false
-        
-        if args.length == 3
-            index = null
-            for i in [0...args.length]
-                if args[i].toLowerCase() == "-r"
-                    recursive = true
-                    index = i
-            args.splice index, 1
-        source = args[0]
-        target = args[1]
-        if not source or not target
-            return @output "cp: invalid source or target."
-                    
-        absSource = @absolutePath source
-        absTarget = @absolutePath target
-        
-        @sendCommand "cp", {"source":absSource, "target":absTarget, "recursive":recursive}, (data, textStatus, xhr) =>
-            if not data.success
-                if data.over_quota
-                    @output "mv#{OVER_QUOTA_MSG}"
-                else if not data.source_exists
-                    @output "cp: Cannot stat `#{source}': No such file or directory"
-                else if data.source_is_dir
-                    @output "cp: Omitted directory `#{source}'"
-                else
-                    @output "cp: Unknown error: #{data.error}"
-            @newLine()
-        return false
     
     do_rm:(args...) ->
         [recursive, force] = [false, false]
@@ -611,17 +624,6 @@ class Terminal
             @newLine()
         return false
     
-    do_download:(path) ->
-        absPath = @absolutePath path
-        @sendCommand "download", path:absPath, (data, textStatus, xhr) =>
-            if data.success
-                window.open data.url
-            else if not data.exists
-                @output "download: cannot download #{path}: No such file or directory"
-            else
-                @output "download: Unknown error: #{data.error}"
-            @newLine()
-        return false
     
     do_storage:(op, service) ->
         if not op? and not service?
@@ -644,10 +646,7 @@ class Terminal
                 Use `storage disable &lt;service>` to disable."""
             @newLine()
         return false
-    
-    do_logout:() ->
-        window.location.href = "/logout/"
-    
+        
     _uploadFile:(fileInput, successHandler) ->
         data = fileInput.dataset
         xhr = new XMLHttpRequest()

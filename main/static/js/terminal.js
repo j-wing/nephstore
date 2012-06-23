@@ -6,14 +6,6 @@
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   COMMANDS = {
-    "ls": {
-      "args": [0, 1],
-      "help": "Usage: ls [DIRECTORY]\nList information about DIRECTORY (the current directory by default)."
-    },
-    "mv": {
-      "args": [2],
-      "help": "Usage: mv [SOURCE] [DEST]\nor:    mv [SOURCE] [DIRECTORY]\nRename SOURCE to DEST, or move SOURCE(s) to DIRECTORY."
-    },
     "cd": {
       "args": [0, 1],
       "help": "Usage: cd [PATH]\nChanges the current working directory to PATH."
@@ -22,13 +14,41 @@
       "args": [2, 3],
       "help": "Usage: cp SOURCE TARGET [-R]\nCopies a file or directory from `source` to `target`.\n-R, -r: Copy SOURCE recursively."
     },
-    "rm": {
-      "args": [1, 2],
-      "help": "Usage: rm [-rf] FILE\nRemoves FILE.\n-R, -r: Removes FILE recursively, removing all files within FILE if it is a directory.\n-f: Never prompt for confirmation"
+    "download": {
+      "args": [1],
+      "help": "Usage: download PATH\nDownloads the file or directory at PATH from an enabled storage service."
+    },
+    "help": {
+      "args": [0, 1],
+      "help": "Usage: help [COMMAND]\nI'm just here to help, bro."
+    },
+    "login": {
+      "args": [0, 1],
+      "help": "Usage: login [SERVICE] \nBrings up the authentication and authorization dialog for SERVICE.\nIf SERVICE is not specified, defaults to Google, if enabled."
+    },
+    "logout": {
+      "args": [0, 1],
+      "help": "Usage: logout\nLogs you out NephStore. You will need log back in via OpenID to continue using NephStore. "
+    },
+    "ls": {
+      "args": [0, 1],
+      "help": "Usage: ls [DIRECTORY]\nList information about DIRECTORY (the current directory by default)."
     },
     "mkdir": {
       "args": [1, 2],
       "help": "Usage: mkdir NAME\nCreates a directory 'NAME' in the current working directory."
+    },
+    "mv": {
+      "args": [2],
+      "help": "Usage: mv [SOURCE] [DEST]\nor:    mv [SOURCE] [DIRECTORY]\nRename SOURCE to DEST, or move SOURCE(s) to DIRECTORY."
+    },
+    "rm": {
+      "args": [1, 2],
+      "help": "Usage: rm [-rf] FILE\nRemoves FILE.\n-R, -r: Removes FILE recursively, removing all files within FILE if it is a directory.\n-f: Never prompt for confirmation"
+    },
+    "storage": {
+      "args": [0, 2],
+      "help": "Usage: storage [enable or disable] [SERVICE]\nView and enable or disable storage methods. SERVICE should be one of: \"dropbox\", \"google\""
     },
     "upload": {
       "args": [1, 2, 3],
@@ -47,32 +67,12 @@
           "default": ["dropbox", "google"]
         }
       }
-    },
-    "download": {
-      "args": [1],
-      "help": "Usage: download PATH\nDownloads the file or directory at PATH from an enabled storage service."
-    },
-    "help": {
-      "args": [0, 1],
-      "help": "Usage: help [COMMAND]\nI'm just here to help, bro."
-    },
-    "storage": {
-      "args": [0, 2],
-      "help": "Usage: storage [enable or disable] [SERVICE]\nView and enable or disable storage methods. SERVICE should be one of: \"dropbox\", \"google\""
-    },
-    "login": {
-      "args": [0, 1],
-      "help": "Usage: login [SERVICE] \nBrings up the authentication and authorization dialog for SERVICE.\nIf SERVICE is not specified, defaults to Google, if enabled."
-    },
-    "logout": {
-      "args": [0, 1],
-      "help": "Usage: logout\nLogs you out NephStore. You will need log back in via OpenID to continue using NephStore. "
     }
   };
 
   SUPPORTED_SERVICES = ["dropbox", "google"];
 
-  WELCOME_MESSAGE = "<div class=\"welcome-message\">\nWelcome to NephStore.\n\nTo begin, login via OpenID to a Google account. Click the link below to do so. \n- Once the terminal is available, use the `storage` command to enable and disable storage services. By default, no service is enabled. \n- Once you've enabled a service(s), use `login <service name>` for each service you enable to authorize Nephstore to access your account.\n- Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download <path>` commands.\n</div>";
+  WELCOME_MESSAGE = "<div class=\"welcome-message\">\nWelcome to NephStore.\n\nTo begin, login via OpenID to a Google account. Click the link below to do so. \n- Once the terminal is available, use the `storage` command to enable and disable storage services. By default, no service is enabled. \n- Once you've enabled a service(s), use `login &lt;service name&gt;` for each service you enable to authorize Nephstore to access your account.\n- Then, you can navigate the filesystem using standard Unix terminal commands, as well as use the `upload` and `download <path>` commands.\n</div>";
 
   OVER_QUOTA_MSG = ": Cannot perform requested operation: Over Quota";
 
@@ -410,20 +410,35 @@
       });
     }
 
-    Terminal.prototype.updateCursorPosition = function(px) {
-      var caretIndex, cursorIndex, elem,
-        _this = this;
-      this.cursorMoving = 1;
-      $("#cursor").removeClass("hidden");
-      clearTimeout(this.cursorTimer);
-      elem = $("#entry")[0];
-      caretIndex = elem.selectionStart;
-      cursorIndex = (caretIndex - elem.value.length) * 10;
-      $("#cursor-wrapper").css("left", "" + cursorIndex + "px");
-      this.cursorMoving = 2;
-      return this.cursorTimer = setTimeout(function() {
-        if (_this.cursorMoving === 2) return _this.cursorMoving = 0;
-      }, 300);
+    Terminal.prototype.absolutePath = function(path) {
+      if ((!path.startswith("/" || path.startswith("./"))) && !path.startswith("..")) {
+        if (path.startswith("./")) path = path.slice(2);
+        path = this.path.endswith("/") ? "" + this.path + path : "" + this.path + "/" + path;
+      }
+      return normpath(path);
+    };
+
+    Terminal.prototype.blinkCursor = function() {
+      if (this.cursorMoving === 0) $("#cursor").toggleClass("hidden");
+      return setTimeout(this.blinkCursor.bind(this), 750);
+    };
+
+    Terminal.prototype.createCursor = function() {
+      var cdiv, div;
+      div = $(document.createElement("div"));
+      div.attr("id", "cursor-wrapper");
+      cdiv = $(document.createElement("span")).html("&nbsp;").attr("id", "cursor").appendTo(div);
+      return div;
+    };
+
+    Terminal.prototype.createEntryElement = function() {
+      var span;
+      span = $(document.createElement("span"));
+      return span.attr("id", "active-entry");
+    };
+
+    Terminal.prototype.forceOpenIDLogin = function() {
+      return $(".welcome-message").after($("<span>OpenID Login: <a href=\"" + this.user.loginURL + "\">" + this.user.loginURL + "</a></span>"));
     };
 
     Terminal.prototype.keyboardInterrupt = function() {
@@ -446,31 +461,20 @@
       return this.promptHandler = null;
     };
 
-    Terminal.prototype.createEntryElement = function() {
-      var span;
-      span = $(document.createElement("span"));
-      return span.attr("id", "active-entry");
-    };
-
-    Terminal.prototype.createCursor = function() {
-      var cdiv, div;
-      div = $(document.createElement("div"));
-      div.attr("id", "cursor-wrapper");
-      cdiv = $(document.createElement("span")).html("&nbsp;").attr("id", "cursor").appendTo(div);
-      return div;
-    };
-
-    Terminal.prototype.blinkCursor = function() {
-      if (this.cursorMoving === 0) $("#cursor").toggleClass("hidden");
-      return setTimeout(this.blinkCursor.bind(this), 750);
-    };
-
-    Terminal.prototype.setEntryEnabled = function(enabled) {
-      if (enabled) {
-        return $("#entry").removeAttr("disabled");
+    Terminal.prototype.output = function(html, append, keepNewLines) {
+      var div;
+      div = $(document.createElement("div")).addClass("output");
+      if (keepNewLines || typeof html !== "string") {
+        div.html(html);
       } else {
-        return $("#entry").attr("disabled", "disabled");
+        div.html(html.replace(/\n/g, "<br />"));
       }
+      if (append) {
+        $("#terminal").append(html);
+      } else {
+        $("#active-line").after(div);
+      }
+      return $("#cursor").insertAfter(div);
     };
 
     Terminal.prototype.processCurrentLine = function() {
@@ -497,20 +501,15 @@
       return this.stack.reset();
     };
 
-    Terminal.prototype.output = function(html, append, keepNewLines) {
-      var div;
-      div = $(document.createElement("div")).addClass("output");
-      if (keepNewLines || typeof html !== "string") {
-        div.html(html);
-      } else {
-        div.html(html.replace(/\n/g, "<br />"));
-      }
-      if (append) {
-        $("#terminal").append(html);
-      } else {
-        $("#active-line").after(div);
-      }
-      return $("#cursor").insertAfter(div);
+    Terminal.prototype.recallCommand = function(previous) {
+      var command;
+      command = previous ? this.stack.previous() : this.stack.next();
+      if (command !== null) return this.setCommand(command, true);
+    };
+
+    Terminal.prototype.sendCommand = function(command, data, callback) {
+      data["command"] = command;
+      return $.post("/command/", data, callback, "json");
     };
 
     Terminal.prototype.setCommand = function(command, copyToInput) {
@@ -518,14 +517,111 @@
       if (copyToInput) return $("#entry").val(command);
     };
 
-    Terminal.prototype.recallCommand = function(previous) {
-      var command;
-      command = previous ? this.stack.previous() : this.stack.next();
-      if (command !== null) return this.setCommand(command, true);
+    Terminal.prototype.setEntryEnabled = function(enabled) {
+      if (enabled) {
+        return $("#entry").removeAttr("disabled");
+      } else {
+        return $("#entry").attr("disabled", "disabled");
+      }
     };
 
-    Terminal.prototype.forceOpenIDLogin = function() {
-      return $(".welcome-message").after($("<span>OpenID Login: <a href=\"" + this.user.loginURL + "\">" + this.user.loginURL + "</a></span>"));
+    Terminal.prototype.updateCursorPosition = function(px) {
+      var caretIndex, cursorIndex, elem,
+        _this = this;
+      this.cursorMoving = 1;
+      $("#cursor").removeClass("hidden");
+      clearTimeout(this.cursorTimer);
+      elem = $("#entry")[0];
+      caretIndex = elem.selectionStart;
+      cursorIndex = (caretIndex - elem.value.length) * 10;
+      $("#cursor-wrapper").css("left", "" + cursorIndex + "px");
+      this.cursorMoving = 2;
+      return this.cursorTimer = setTimeout(function() {
+        if (_this.cursorMoving === 2) return _this.cursorMoving = 0;
+      }, 300);
+    };
+
+    Terminal.prototype.do_cd = function(path) {
+      var absPath,
+        _this = this;
+      if (!path) path = "/";
+      absPath = this.absolutePath(path);
+      if (absPath === "/") return true;
+      this.sendCommand("cd", {
+        path: absPath
+      }, function(data, textStatus, xhr) {
+        if (data.success) {
+          _this.path = absPath;
+        } else if (!data.is_dir) {
+          _this.output("cd: " + path + ": Not a directory");
+        } else if (!data.exists) {
+          _this.output("cd: " + path + ": No such file or directory");
+        } else {
+          _this.output("cd: Unknown error: " + data.error);
+        }
+        return _this.newLine();
+      });
+      return false;
+    };
+
+    Terminal.prototype.do_cp = function() {
+      var absSource, absTarget, args, i, index, recursive, source, target, _ref,
+        _this = this;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      recursive = false;
+      if (args.length === 3) {
+        index = null;
+        for (i = 0, _ref = args.length; 0 <= _ref ? i < _ref : i > _ref; 0 <= _ref ? i++ : i--) {
+          if (args[i].toLowerCase() === "-r") {
+            recursive = true;
+            index = i;
+          }
+        }
+        args.splice(index, 1);
+      }
+      source = args[0];
+      target = args[1];
+      if (!source || !target) return this.output("cp: invalid source or target.");
+      absSource = this.absolutePath(source);
+      absTarget = this.absolutePath(target);
+      this.sendCommand("cp", {
+        "source": absSource,
+        "target": absTarget,
+        "recursive": recursive
+      }, function(data, textStatus, xhr) {
+        if (!data.success) {
+          if (data.over_quota) {
+            _this.output("mv" + OVER_QUOTA_MSG);
+          } else if (!data.source_exists) {
+            _this.output("cp: Cannot stat `" + source + "': No such file or directory");
+          } else if (data.source_is_dir) {
+            _this.output("cp: Omitted directory `" + source + "'");
+          } else {
+            _this.output("cp: Unknown error: " + data.error);
+          }
+        }
+        return _this.newLine();
+      });
+      return false;
+    };
+
+    Terminal.prototype.do_download = function(path) {
+      var absPath,
+        _this = this;
+      absPath = this.absolutePath(path);
+      this.sendCommand("download", {
+        path: absPath
+      }, function(data, textStatus, xhr) {
+        if (data.success) {
+          window.open(data.url);
+        } else if (!data.exists) {
+          _this.output("download: cannot download " + path + ": No such file or directory");
+        } else {
+          _this.output("download: Unknown error: " + data.error);
+        }
+        return _this.newLine();
+      });
+      return false;
     };
 
     Terminal.prototype.do_help = function(command) {
@@ -568,56 +664,8 @@
       return false;
     };
 
-    Terminal.prototype.sendCommand = function(command, data, callback) {
-      data["command"] = command;
-      return $.post("/command/", data, callback, "json");
-    };
-
-    Terminal.prototype.absolutePath = function(path) {
-      if ((!path.startswith("/" || path.startswith("./"))) && !path.startswith("..")) {
-        if (path.startswith("./")) path = path.slice(2);
-        path = this.path.endswith("/") ? "" + this.path + path : "" + this.path + "/" + path;
-      }
-      return normpath(path);
-    };
-
-    Terminal.prototype.do_cd = function(path) {
-      var absPath,
-        _this = this;
-      if (!path) path = "/";
-      absPath = this.absolutePath(path);
-      if (absPath === "/") return true;
-      this.sendCommand("cd", {
-        path: absPath
-      }, function(data, textStatus, xhr) {
-        if (data.success) {
-          _this.path = absPath;
-        } else if (!data.is_dir) {
-          _this.output("cd: " + path + ": Not a directory");
-        } else if (!data.exists) {
-          _this.output("cd: " + path + ": No such file or directory");
-        } else {
-          _this.output("cd: Unknown error: " + data.error);
-        }
-        return _this.newLine();
-      });
-      return false;
-    };
-
-    Terminal.prototype.do_mkdir = function(name) {
-      var _this = this;
-      this.sendCommand("mkdir", {
-        "path": this.path,
-        "name": name
-      }, function(data, textStatus, xhr) {
-        if (data.exists_already) {
-          _this.output("mkdir: cannot create directory `" + name + "': File exists");
-        } else if (data.error) {
-          _this.output("mkdir: Unknown error: " + data.error);
-        }
-        return _this.newLine();
-      });
-      return false;
+    Terminal.prototype.do_logout = function() {
+      return window.location.href = "/logout/";
     };
 
     Terminal.prototype.do_ls = function(path) {
@@ -650,6 +698,22 @@
       return false;
     };
 
+    Terminal.prototype.do_mkdir = function(name) {
+      var _this = this;
+      this.sendCommand("mkdir", {
+        "path": this.path,
+        "name": name
+      }, function(data, textStatus, xhr) {
+        if (data.exists_already) {
+          _this.output("mkdir: cannot create directory `" + name + "': File exists");
+        } else if (data.error) {
+          _this.output("mkdir: Unknown error: " + data.error);
+        }
+        return _this.newLine();
+      });
+      return false;
+    };
+
     Terminal.prototype.do_mv = function(source, target) {
       var absSource, absTarget,
         _this = this;
@@ -666,47 +730,6 @@
             _this.output("mv" + OVER_QUOTA_MSG);
           } else {
             _this.output("mv: Unknown error: " + data.error);
-          }
-        }
-        return _this.newLine();
-      });
-      return false;
-    };
-
-    Terminal.prototype.do_cp = function() {
-      var absSource, absTarget, args, i, index, recursive, source, target, _ref,
-        _this = this;
-      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      recursive = false;
-      if (args.length === 3) {
-        index = null;
-        for (i = 0, _ref = args.length; 0 <= _ref ? i < _ref : i > _ref; 0 <= _ref ? i++ : i--) {
-          if (args[i].toLowerCase() === "-r") {
-            recursive = true;
-            index = i;
-          }
-        }
-        args.splice(index, 1);
-      }
-      source = args[0];
-      target = args[1];
-      if (!source || !target) return this.output("cp: invalid source or target.");
-      absSource = this.absolutePath(source);
-      absTarget = this.absolutePath(target);
-      this.sendCommand("cp", {
-        "source": absSource,
-        "target": absTarget,
-        "recursive": recursive
-      }, function(data, textStatus, xhr) {
-        if (!data.success) {
-          if (data.over_quota) {
-            _this.output("mv" + OVER_QUOTA_MSG);
-          } else if (!data.source_exists) {
-            _this.output("cp: Cannot stat `" + source + "': No such file or directory");
-          } else if (data.source_is_dir) {
-            _this.output("cp: Omitted directory `" + source + "'");
-          } else {
-            _this.output("cp: Unknown error: " + data.error);
           }
         }
         return _this.newLine();
@@ -755,25 +778,6 @@
       return false;
     };
 
-    Terminal.prototype.do_download = function(path) {
-      var absPath,
-        _this = this;
-      absPath = this.absolutePath(path);
-      this.sendCommand("download", {
-        path: absPath
-      }, function(data, textStatus, xhr) {
-        if (data.success) {
-          window.open(data.url);
-        } else if (!data.exists) {
-          _this.output("download: cannot download " + path + ": No such file or directory");
-        } else {
-          _this.output("download: Unknown error: " + data.error);
-        }
-        return _this.newLine();
-      });
-      return false;
-    };
-
     Terminal.prototype.do_storage = function(op, service) {
       var _this = this;
       if (!(op != null) && !(service != null)) {
@@ -798,10 +802,6 @@
         return _this.newLine();
       });
       return false;
-    };
-
-    Terminal.prototype.do_logout = function() {
-      return window.location.href = "/logout/";
     };
 
     Terminal.prototype._uploadFile = function(fileInput, successHandler) {
