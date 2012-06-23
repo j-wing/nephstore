@@ -491,7 +491,7 @@
     Terminal.prototype.newLine = function() {
       var cursor, div, entry, text;
       $("#active-entry,#active-line").attr("id", "");
-      $("#cursor").remove();
+      $("#cursor-wrapper").remove();
       entry = this.createEntryElement();
       text = "[" + (this.user.name.toLowerCase()) + "@nephstore]:" + this.path + "$ ";
       cursor = this.createCursor();
@@ -516,7 +516,7 @@
       } else {
         $("#active-line").after(div);
       }
-      return $("#cursor").insertAfter(div);
+      return $("#cursor-wrapper").insertAfter(div);
     };
 
     Terminal.prototype.processCurrentLine = function() {
@@ -567,7 +567,7 @@
       }
     };
 
-    Terminal.prototype.updateCursorPosition = function(px) {
+    Terminal.prototype.updateCursorPosition = function() {
       var caretIndex, cursorIndex, elem,
         _this = this;
       this.cursorMoving = 1;

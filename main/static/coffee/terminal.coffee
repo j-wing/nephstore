@@ -412,7 +412,7 @@ class Terminal
     
     newLine:() ->
         $("#active-entry,#active-line").attr("id", "")
-        $("#cursor").remove()
+        $("#cursor-wrapper").remove()
         
         entry = @createEntryElement()
         text = "[#{@user.name.toLowerCase()}@nephstore]:#{@path}$ "
@@ -433,7 +433,7 @@ class Terminal
             $("#terminal").append html
         else 
             $("#active-line").after div
-        $("#cursor").insertAfter div
+        $("#cursor-wrapper").insertAfter div
             
     processCurrentLine:()->
         @setEntryEnabled false
@@ -475,7 +475,7 @@ class Terminal
     setEntryEnabled:(enabled) ->
         if enabled then $("#entry").removeAttr("disabled") else $("#entry").attr("disabled", "disabled")    
     
-    updateCursorPosition:(px) ->
+    updateCursorPosition:() ->
         @cursorMoving = 1
         $("#cursor").removeClass("hidden")
         clearTimeout @cursorTimer
@@ -681,7 +681,6 @@ class Terminal
         terminal = $("#terminal")
         percent = $(document.createElement("span")).addClass("upload-percent").html("0%&nbsp;").appendTo terminal
         hashes = $(document.createElement("span")).addClass("upload-hashes").appendTo terminal
-#         $("#cursor").after hashes
         
         xhr.upload.addEventListener "progress", (e) =>
             if e.lengthComputable
